@@ -1,0 +1,143 @@
+# Copyright (c) 2015, Andrey Fainer <fandrey@gmx.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#!/bin/bash
+
+GRID_SIZE=(64 64 64)
+TILE_SIZE=64
+COLOR=green
+
+BOTTOMTOP=/tmp/bt.raw
+MIDDLE=/tmp/m.raw
+TILE=/tmp/tile
+OUT=grid
+OUTVOXELS=grid.voxels
+
+function usage()
+{
+    printf %s\\n\
+         "Usage: gengrid [-t N] [-s NxNxN] [-c color] [grid-name]"\
+         "Generate voxmap with a grid.  Size of cells equal to the tile size.
+Cells edges are drawn with default or specified with -c option color.
+Other space in the voxmap is filled with empty color (RGBA 0 0 0 0).
+Default grid name is \`grid'."\
+         \
+         ""\
+         "-t          tile size; default is 64"\
+         "-s WxHxD    size of the entire grid in voxels; default is 64x64x64"\
+         "-c          color of the grid edges; default is green"\
+         "-h, --help  display this help and exit"
+}
+
+ARGS=`getopt -o ht:s:c: -l help -n gengrid -- "$@"`
+
+test $? == 0 || exit 1
+
+eval set -- "$ARGS"
+
+while true ; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -t)
+            TILE_SIZE="$2"
+            shift 2
+            ;;
+        -s)
+            i=0
+            for s in ${2//x/ } ; do
+                GRID_SIZE[i]=$s
+                i=$(( i + 1 ))
+            done
+
+            s=
+            test $i -lt 3 && s=less
+            test $i -gt 3 && s=greater
+
+            if [ $s ] ; then
+                echo "gengrid: provided $s than 3 dimensions for option -s" >&2
+                exit 1
+            fi
+
+            shift 2
+            ;;
+        -c)
+            COLOR="$2"
+            shift 2
+            ;;
+	--)
+            shift
+            break ;;
+        *)
+            echo "gengrid: error parsing arguments" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [ $# -gt 0 ] ; then
+    OUT="$1"
+    OUTVOXELS="${1}.voxels"
+fi
+
+i=0
+while [ $i -lt 3 ]; do
+    r=$((GRID_SIZE[i] % TILE_SIZE))
+    test $r != 0 && GRID_SIZE[i]=$((GRID_SIZE[i] + TILE_SIZE - r))
+    i=$(( i + 1 ))
+done
+
+TILE_MAX=$((TILE_SIZE - 1))
+TILES_NUM=$((GRID_SIZE[0] * GRID_SIZE[1] * GRID_SIZE[2]\
+                      / TILE_SIZE / TILE_SIZE / TILE_SIZE))
+
+convert -size ${TILE_SIZE}x${TILE_SIZE} canvas:\#00000000 -depth 8\
+        -fill \#00000000 -stroke $COLOR -strokewidth 1\
+        -draw "rectangle 0,0 ${TILE_MAX},${TILE_MAX}" rgba:$BOTTOMTOP ||
+    exit 1
+
+convert -size ${TILE_SIZE}x${TILE_SIZE} canvas:\#00000000 -depth 8\
+        -fill $COLOR -draw "point 0,0 point ${TILE_MAX},0 \
+        point 0,${TILE_MAX} point ${TILE_MAX},${TILE_MAX}" rgba:$MIDDLE ||
+    exit 1
+
+cat $BOTTOMTOP >$TILE || exit 1
+
+i=1
+while [ $i -lt 63 ] ; do
+    cat $MIDDLE >>$TILE || exit 1
+    i=$(( i + 1 ))
+done
+
+cat $BOTTOMTOP >>$TILE || exit 1
+
+i=0
+while [ $i -lt $TILES_NUM ] ; do
+    cat $TILE >>$OUTVOXELS || exit 1
+    i=$(( i + 1 ))
+done
+
+printf %s\\n\
+       ";;; -*- lisp -*-"\
+       "(size ${GRID_SIZE[0]} ${GRID_SIZE[1]} ${GRID_SIZE[2]})"\
+       "(voxels . \"$OUTVOXELS\")" > $OUT

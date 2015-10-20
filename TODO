@@ -1,0 +1,38 @@
+-*- org -*-
+
+#+TODO: TODO FIXME | DONE
+
+* FIXME The maximum number of texture tiles per render tile is too small
+* TODO Heap-allocated voxmaps for small sprites
+* TODO Physics
+  - [ ] physics.lisp sketch
+  - [ ] Bullet C wrapper
+* TODO Pass sun and ambient light to shaders via uniforms
+* FIXME The camera viewable area
+  Try this:
+  (defparameter *sprite* (make-sprite 'sprite "~/doc/hovertank/hull"))
+  (gobj :mv *sprite* (locat 64 64 32))
+  (gobj :rot *sprite* 'z -10)
+  (setq *camera-azimuth* 0)
+  (setq *camera-tilt* 0)
+  (setq *camera-location* (locat 64 63))
+
+* TODO Experiment with CA voxel format and its transfer function
+  CA format consists of two 1-byte components: Color and Alpha.  Color
+  value is used to lookup RGB value of a voxel via the transfer
+  function.  This format will reduce voxmaps sizes.
+
+* TODO Volumetric collision detection
+* TODO Scripting language
+* FIXME The camera near plan at big zoom
+* TODO io_voxels: multithreaded rasterization
+  The first version didn't work because Is_Inside is not reentrant.
+  Copy mesh for each thread if it possible.
+* TODO Patch shaders upon render init
+  with `maxtexnum', `voxsize', `tex_tile_size', `tex_tiles_coords'.
+  Use *render-shader-loaded-hook*.
+
+* TODO Thread-local hooks
+  Each thread should create its local hooks with gensyms as names and
+  global variables such as *render-init-hook* will be removed.
+* TODO io_voxels: voxelize polygonal models with textures
