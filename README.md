@@ -122,3 +122,8 @@ Road Map
  - Visual effects: fire, smoke, particles.
  - Fracture simulation.
  - High-level game-oriented scripting language.
+
+Sample image
+------------
+
+![Suzanne](https://github.com/afainer/cleven/blob/master/suzanne.png)
