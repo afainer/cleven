@@ -518,7 +518,7 @@ applied first."
         (s2 #'+))
     (iflet (symbolp axis)
         ((fn #'eq #'=)
-         (val '(x y z) '(0 1 2)))
+         (val '(:x :y :z) '(0 1 2)))
       (cond ((funcall fn axis (car val))   (setq r1 1 r2 2))
             ((funcall fn axis (cadr val))  (setq r1 0 r2 2 s1 #'+ s2 #'-))
             ((funcall fn axis (caddr val)) (setq r1 0 r2 1))))

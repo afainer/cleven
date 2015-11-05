@@ -122,6 +122,7 @@ Road Map
  - Visual effects: fire, smoke, particles.
  - Fracture simulation.
  - High-level game-oriented scripting language.
+ - Multiplayer support.
 
 Sample image
 ------------

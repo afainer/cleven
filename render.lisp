@@ -116,13 +116,9 @@ Is not used at the moment.")
               (let ((l (locat* loc +voxmap-tile-size+)))
                 (push l tiles-coords)
                 (push (locat/ l max-tex-size) tex-tiles-coords)))
-            ;; Just limit max tiles number.  Now it is no need to
-            ;; render many sprites simultaneously.
-            (setq max-tiles (1- (gl:get* :max-vertex-attribs)))
-            (let* ((len (length tiles-coords))
-                   (bl (- len (min max-tiles len))))
-              (setq tiles-coords (butlast (nreverse tiles-coords) bl)
-                    tex-tiles-coords (butlast (nreverse tex-tiles-coords) bl))))
+            (setq max-tex-attribs (1- (gl:get* :max-vertex-attribs))
+                  tiles-coords (nreverse tiles-coords)
+                  tex-tiles-coords (nreverse tex-tiles-coords)))
 
           ,@(let (fns)
                  (dolist (var tilevars (nreverse fns))
@@ -135,7 +131,7 @@ Is not used at the moment.")
                              (cffi:null-pointer))))))
   (def-tiles
       ;; TODO Redefine as parameters.
-      max-tex-size tex-tile-size tex-tiles-coords tiles-coords max-tiles))
+      max-tex-size tex-tile-size tex-tiles-coords tiles-coords max-tex-attribs))
 
 (defun tile-locat (tilenum)
   "Location in texels of the tile number TILENUM."
@@ -205,29 +201,92 @@ Is not used at the moment.")
       (incf verti)
       (locat+! v dir))))
 
-(defun make-fill-tslice (slice dir ar texi wob rtileloc ttileloc)
+(defun make-fill-tslice (slice dir ar texi wob rtileloc)
   "Make a function to fill the GL buffer with texture slices."
   (let* ((rot (wob :irotmat wob))
          (dir (transform rot (locat/ dir (max-tex-size))))
          (loc (locat/ (locat- (wob :location wob) rtileloc)
                       (max-tex-size)))
-         (orig (locat/ (wob :origin wob) (max-tex-size)))
-         (mat (mat44mul (apply #'translation-matrix
-                               (locat-coords (locat+ orig ttileloc)))
-                        rot
-                        (apply #'translation-matrix
-                               (locat-coords (locat- (locat+ loc ttileloc)))))))
+         (orig (locat/ (wob :origin wob) (max-tex-size))))
     (setq slice (mapcar #'(lambda (v)
-                            (transform mat v))
+                            (transform rot v))
                         slice))
-    #'(lambda ()
-        (dolist (v slice)
-          (with-locat (v)
-            (setf (mem-aref ar :float texi) (float x 0f0)
-                  (mem-aref ar :float (incf texi)) (float y 0f0)
-                  (mem-aref ar :float (incf texi)) (float z 0f0)))
-          (incf texi)
-          (locat+! v dir)))))
+    (values
+     #'(lambda ()
+         (dolist (v slice)
+           (with-locat (v)
+             (setf (mem-aref ar :float texi) (float x 0f0)
+                   (mem-aref ar :float (incf texi)) (float y 0f0)
+                   (mem-aref ar :float (incf texi)) (float z 0f0)))
+           (incf texi)
+           (locat+! v dir)))
+     rot
+     (matrix-locat
+      (split-matrix (mat44mul (translation-matrix-loc orig)
+                              rot
+                              (translation-matrix-loc (locat- loc)))
+                    t)))))
+
+(let (woblocs wobnum texidx texnum rotmats)
+  (defun make-fill-tslices (slice dir ar texis wobs rtileloc)
+    "Make functions to fill the GL buffer with texture slices.
+Also, make available the following: wobs locations, wobs number,
+texture attribs index list, texture attribs number and wobs rotation
+matrices.  See `wobs-locations', `wobs-number', `tex-attribs-indexes',
+`tex-attribs-number', `wobs-rotmats'."
+    (let (fns)
+      (setq woblocs nil
+            wobnum 0
+            texidx nil
+            texnum 0
+            rotmats nil)
+      (dolist (ob wobs)
+        (multiple-value-bind (fn rot loc)
+            (make-fill-tslice slice dir ar (car texis) ob rtileloc)
+          (let ((i texnum))
+            (if (some #'(lambda (m)
+                          (decf i)
+                          (wob :irotmat= ob m))
+                      rotmats)
+                (push i texidx)
+                (progn
+                  (push fn fns)
+                  (push rot rotmats)
+                  (push texnum texidx)
+                  (incf texnum)
+                  (pop texis)))
+            (push loc woblocs)
+            (incf wobnum)
+            ;; FIXME The rest of wobs may have ROT from ROTMATS.  We
+            ;; should not to ignore them.
+            (if (> texnum (max-tex-attribs))
+                (return)))))
+      (setq woblocs (nreverse woblocs)
+            texidx (nreverse texidx)
+            rotmats (nreverse rotmats))
+      (nreverse fns)))
+
+  (defun wobs-locations ()
+    "Texture locations of wobs for the current render tile."
+    woblocs)
+
+  (defun wobs-number ()
+    "Number of wobs for the current render tile."
+    wobnum)
+
+  (defun tex-attribs-indexes ()
+    "The list of texture attribs indexes for the current render tile.
+The texture attribs index is the index in texture attribs array for a
+wob."
+    texidx)
+
+  (defun tex-attribs-number ()
+    "Number of vertexes texture attribs for the current render tile."
+    texnum)
+
+  (defun wobs-rotmats ()
+    "Wobs inverted rotations matrices."
+    rotmats))
 
 (macrolet
     ((mkslicesfn (axis sign)
@@ -271,14 +330,12 @@ Is not used at the moment.")
                            (at ,(if (eq sign '-)
                                     (symbolicate 't2 axis)
                                     (symbolicate 't1 axis)))
-                           (fill-tslices (mapcar
-                                          #'(lambda (texi wob coords)
-                                              (make-fill-tslice
-                                               (mapcar #'(lambda (v)
-                                                           (locat+ v coords))
-                                                       ,tslice)
-                                               ,dir glar texi wob loc coords))
-                                          texis wobs (tex-tiles-coords))))
+                           (fill-tslices (make-fill-tslices ,tslice
+                                                            ,dir
+                                                            glar
+                                                            texis
+                                                            wobs
+                                                            loc)))
                       (set-vslice ,vslice ,dir glar verti)
                       (dotimes (s +voxmap-tile-size+)
                         (fill-vslice)
@@ -298,33 +355,33 @@ Is not used at the moment.")
                                 coords))
                    loc glar verti texis wobs))))))
 
-(defun make-render-tile (loc wobs wobsnum)
+(defun make-render-tile (loc wobs)
   "Make proxy geometry for the rendering tile at location LOC.
-WOBS is a list of wobs in the tile.  WOBSNUM is precalculated WOBS
-lenghs."
+WOBS is a list of wobs in the tile."
   (let ((vi 0)
-        (ti +tile-floats+)
-        (size (+ +tile-floats+
-                 (* wobsnum +tile-floats+))))
-    (cffi:with-foreign-object (ar :float size)
+        (ti +tile-floats+))
+    (cffi:with-foreign-object (ar :float (+ +tile-floats+
+                                            (* (max-tex-attribs) +tile-floats+)))
       (progn
         (make-slices loc ar vi
                      (map0-n #'(lambda (i)
                                  (+ i ti))
-                             (* (1- wobsnum) +tile-floats+)
+                             (* (1- (max-tex-attribs)) +tile-floats+)
                              +tile-floats+)
                      wobs)
         (ensure-bind)
         (gl:buffer-data :array-buffer
                         :static-draw
-                        (gl::make-gl-array-from-pointer ar :float size))
+                        (gl::make-gl-array-from-pointer ar
+                                                        :float
+                                                        (+ +tile-floats+
+                                                           (* (tex-attribs-number)
+                                                              +tile-floats+))))
         ;; 3 floats per vertex, 3 float per texture coordinate
         (gl:vertex-attrib-pointer +vertex-attrib-location+
                                   3 :float nil 0 0)
         (gl:enable-vertex-attrib-array +vertex-attrib-location+)
-        ;; At the moment max-tiles must be less than
-        ;; :max-vertex-attribs
-        (loop for i from 1 to wobsnum
+        (loop for i from 1 to (tex-attribs-number)
            with attr
            do
              (setq attr (+ i +vertex-attrib-location+))
@@ -350,19 +407,13 @@ lenghs."
   (gl:clear :color-buffer)
   (when *world*
     (do-camera-box loc
-      (let* ((wobs (remove-if-not #'(lambda (o)
-                                       (wob :voxels o))
-                                   (world-tile loc)))
-             (wobsnum (length wobs)))
-        (when (> wobsnum (max-tiles))
-          (setq wobs (nthcdr (- wobsnum (max-tiles)) wobs)
-                wobsnum (max-tiles)))
+      (let ((wobs (remove-if-not #'(lambda (o)
+                                     (wob :voxels o))
+                                 (world-tile loc))))
         (when wobs
-          (uniform-camera)
-          (set-texnum wobsnum)
-          (set-diffvec wobs wobsnum)
-          (make-render-tile loc wobs wobsnum)
+          (make-render-tile loc wobs)
           (voxels-to-texture wobs)
+          (load-uniforms)
           (gl:draw-arrays :triangles 0 (* 6 +voxmap-tile-size+))))))
   (sdl2:gl-swap-window *render-window*))
 
@@ -371,47 +422,67 @@ lenghs."
       (texnum-index -1)
       (diffvecx-index -1)
       (diffvecy-index -1)
-      (diffvecz-index -1))
-  (defun uniform-camera ()
-    "Assign the shader camera matrix."
-    (gl:uniform-matrix camera-index 4 (vector (camera-view))))
-
-  (defun set-texnum (texnum)
-    "Set number of loaded texture tiles.
-The texture tiles number is equal to currently rendered wobs."
-    (gl:uniformi texnum-index texnum))
-
-  (defun set-diffvec (wobs num)
-    "Set difference vectors for WOBS.
+      (diffvecz-index -1)
+      (woblocs-index -1)
+      (wobnum-index -1)
+      (texidx-index -1))
+  (defun load-uniforms ()
+    "Load uniform variables."
+    (flet ((load-diffvec ()
+             "Set difference vectors for WOBS.
 Central difference gradient estimation requires values of neighbour
 voxels.  The addressing such neighbours from the texture should take
 into account different wobs orientations."
-    ;; 3 floats per vector
-    (let ((n (* num 3))
-          (i 0)
-          (d (/ 1 (max-tex-size))))
-      (cffi:with-foreign-objects ((ax '%gl:float n)
-                                  (ay '%gl:float n)
-                                  (az '%gl:float n))
-        (dolist (o wobs)
-          (let* ((rot (wob :irotmat o))
-                 (x (transform rot (locat d)))
-                 (y (transform rot (locat 0 d)))
-                 (z (transform rot (locat 0 0 d))))
-            (with-locats (x y z)
-              (setf (mem-aref ax '%gl:float (+ i 0)) xx
-                    (mem-aref ax '%gl:float (+ i 1)) xy
-                    (mem-aref ax '%gl:float (+ i 2)) xz
-                    (mem-aref ay '%gl:float (+ i 0)) yx
-                    (mem-aref ay '%gl:float (+ i 1)) yy
-                    (mem-aref ay '%gl:float (+ i 2)) yz
-                    (mem-aref az '%gl:float (+ i 0)) zx
-                    (mem-aref az '%gl:float (+ i 1)) zy
-                    (mem-aref az '%gl:float (+ i 2)) zz)
-              (incf i 3))))
-        (%gl:uniform-3fv diffvecx-index n ax)
-        (%gl:uniform-3fv diffvecy-index n ay)
-        (%gl:uniform-3fv diffvecz-index n az))))
+             ;; 3 floats per vector
+             (let ((n (* (tex-attribs-number) 3))
+                   (i 0)
+                   (d (/ 1 (max-tex-size))))
+               (cffi:with-foreign-objects ((ax '%gl:float n)
+                                           (ay '%gl:float n)
+                                           (az '%gl:float n))
+                 (dolist (r (wobs-rotmats))
+                   (let ((x (transform r (locat d)))
+                         (y (transform r (locat 0 d)))
+                         (z (transform r (locat 0 0 d))))
+                     (with-locats (x y z)
+                       (setf (mem-aref ax '%gl:float (+ i 0)) xx
+                             (mem-aref ax '%gl:float (+ i 1)) xy
+                             (mem-aref ax '%gl:float (+ i 2)) xz
+                             (mem-aref ay '%gl:float (+ i 0)) yx
+                             (mem-aref ay '%gl:float (+ i 1)) yy
+                             (mem-aref ay '%gl:float (+ i 2)) yz
+                             (mem-aref az '%gl:float (+ i 0)) zx
+                             (mem-aref az '%gl:float (+ i 1)) zy
+                             (mem-aref az '%gl:float (+ i 2)) zz)
+                       (incf i 3))))
+                 (%gl:uniform-3fv diffvecx-index n ax)
+                 (%gl:uniform-3fv diffvecy-index n ay)
+                 (%gl:uniform-3fv diffvecz-index n az))))
+
+           (load-woblocs ()
+             (cffi:with-foreign-object (ar '%gl:float (* 3 (wobs-number)))
+               (let ((i 0))
+                 (dolist (l (wobs-locations))
+                   (with-locat (l)
+                     (setf (mem-aref ar '%gl:float (+ i 0)) x
+                           (mem-aref ar '%gl:float (+ i 1)) y
+                           (mem-aref ar '%gl:float (+ i 2)) z)
+                     (incf i 3))))
+               (%gl:uniform-3fv woblocs-index (wobs-number) ar)))
+
+           (load-texidx ()
+             (cffi:with-foreign-object (ar '%gl:int (wobs-number))
+               (let ((i -1))
+                 (dolist (n (tex-attribs-indexes))
+                   (setf (mem-aref ar '%gl:int (incf i)) n)))
+               (%gl:uniform-1iv texidx-index (wobs-number) ar))))
+
+      (gl:uniform-matrix camera-index 4 (vector (camera-view)))
+      (gl:uniformi texnum-index (tex-attribs-number))
+      (load-diffvec)
+      (load-woblocs)
+      (gl:uniformi wobnum-index (wobs-number))
+      (load-texidx)))
 
   (defun render-load-shaders (&optional
                                 (vertex *default-vertex-shader*)
@@ -425,7 +496,10 @@ into account different wobs orientations."
           texnum-index (gl:get-uniform-location program "texnum")
           diffvecx-index (gl:get-uniform-location program "diffvecx")
           diffvecy-index (gl:get-uniform-location program "diffvecy")
-          diffvecz-index (gl:get-uniform-location program "diffvecz"))
+          diffvecz-index (gl:get-uniform-location program "diffvecz")
+          woblocs-index (gl:get-uniform-location program "woblocs")
+          wobnum-index (gl:get-uniform-location program "wobnum")
+          texidx-index (gl:get-uniform-location program "texidx"))
     (let ((sampler (gl:get-uniform-location program "sampler")))
       (when (< sampler 0)
         (error "The sampler uniform is not found"))
@@ -439,7 +513,10 @@ into account different wobs orientations."
           texnum-index -1
           diffvecx-index -1
           diffvecy-index -1
-          diffvecz-index -1)))
+          diffvecz-index -1
+          woblocs-index -1
+          wobnum-index -1
+          texidx-index -1)))
 
 (defun define-reload-shaders ()
   "Define the render thread function `reload-shaders'."

@@ -3,6 +3,8 @@
 #+TODO: TODO FIXME | DONE
 
 * FIXME The maximum number of texture tiles per render tile is too small
+* TODO Too short variables names for wobs, texture tiles and texture attribs.
+  In fragment.glsl and render.lisp.
 * TODO Heap-allocated voxmaps for small sprites
 * TODO Physics
   - [ ] physics.lisp sketch
@@ -36,3 +38,7 @@
   Each thread should create its local hooks with gensyms as names and
   global variables such as *render-init-hook* will be removed.
 * TODO io_voxels: voxelize polygonal models with textures
+* TODO Because tile size is a constant we can make proxy geometry at
+  compile time.  Generate vertexes for the render tile at location (0
+  0 0), then move them to the required tile location in the vertex
+  shader.

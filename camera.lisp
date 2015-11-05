@@ -32,8 +32,8 @@
 
 (defun camera-matrix ()
   "The transformation matrix of the camera."
-  (mat44mul (rotation-matrix 'x (- *camera-tilt*))
-            (rotation-matrix 'z *camera-azimuth*)
+  (mat44mul (rotation-matrix :x (- *camera-tilt*))
+            (rotation-matrix :z *camera-azimuth*)
             (apply #'translation-matrix
                    (locat-coords (locat- *camera-location*)))))
 
@@ -60,8 +60,8 @@
 
 (defun camera-vector ()
   "The camera look-at vector without the camera location."
-  (transform (mat44mul (rotation-matrix 'z (- *camera-azimuth*))
-                       (rotation-matrix 'x *camera-tilt*)) (locat 0 0 -1)))
+  (transform (mat44mul (rotation-matrix :z (- *camera-azimuth*))
+                       (rotation-matrix :x *camera-tilt*)) (locat 0 0 -1)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun do-camera-ordering ()

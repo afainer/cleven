@@ -127,6 +127,7 @@ is a location.
               :location #'(lambda ()
                             location)
               :irotmat #'(lambda () irotmat)
+              :irotmat= #'(lambda (irm) (eq irotmat irm))
               :origin #'(lambda () (locat- origin tileloc))
               :move mv
               :rotate rot

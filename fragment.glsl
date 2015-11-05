@@ -24,7 +24,13 @@
 #version 330
 
 /* TODO Replace with patchable markers */
-const int   maxtexnum = 15;
+/* Maximum number of texture coord attribs */
+const int maxtexnum = 15;
+
+ /* Maximum number of wobs per rendering tile.
+    TODO Describe why 9 */
+const int maxwobnum = maxtexnum * 9;
+
 const float voxsize  = 1.f / 256.f;
 const float voxsize2 = .5f / 256.f;
 const float tex_tile_size = 64.f/256.f;
@@ -42,13 +48,18 @@ const vec3  tex_tiles_coords[] = vec3[]( vec3( 0.0f , 0.0f , 0.0f ),
                                          vec3( 0.75f, 0.5f , 0.0f ),
                                          vec3( 0.0f , 0.75f, 0.0f ),
                                          vec3( 0.25f, 0.75f, 0.0f ),
-                                         vec3( 0.5f , 0.75f, 0.0f ) );
+                                         vec3( 0.5f , 0.75f, 0.0f ),
+                                         vec3( 0.75f, 0.75f, 0.0f ) );
 
 uniform sampler3D sampler;
-uniform int       texnum;
+
+uniform int  texnum;
 uniform vec3 diffvecx[ maxtexnum ];
 uniform vec3 diffvecy[ maxtexnum ];
 uniform vec3 diffvecz[ maxtexnum ];
+uniform vec3 woblocs[ maxwobnum ];
+uniform int  wobnum;
+uniform int  texidx[ maxwobnum ];
 
 in  vec3 texcoords[ maxtexnum ];
 out vec4 color;
@@ -87,36 +98,25 @@ void main()
 {
   vec4 c = vec4( 0, 0, 0, 0 ), xb = c, yb = c, zb = c, xf = c, yf = c, zf = c;
 
-  for(int i = 0; i < texnum; ++i)
+  for(int i = 0; i < wobnum; ++i)
     {
-      if( out_tile( texcoords[ i ], tex_tiles_coords[ i ] ) )
+      vec3
+        tex_tile_coord = tex_tiles_coords[ i ],
+        coord = texcoords[ texidx[ i ] ] + tex_tile_coord + woblocs[ i ],
+        dx = diffvecx[ texidx[ i ] ],
+        dy = diffvecy[ texidx[ i ] ],
+        dz = diffvecz[ texidx[ i ] ];
+
+      if( out_tile( coord, tex_tile_coord ) )
         continue;
 
-      c += tile_texture( texcoords[ i ].xyz, tex_tiles_coords[ i ] );
-      xb += tile_texture( vec3( texcoords[ i ].x - diffvecx[ i ].x,
-                                texcoords[ i ].y - diffvecx[ i ].y,
-                                texcoords[ i ].z - diffvecx[ i ].z ),
-                          tex_tiles_coords[ i ] );
-      yb += tile_texture( vec3( texcoords[ i ].x - diffvecy[ i ].x,
-                                texcoords[ i ].y - diffvecy[ i ].y,
-                                texcoords[ i ].z - diffvecy[ i ].z ),
-                          tex_tiles_coords[ i ] );
-      zb += tile_texture( vec3( texcoords[ i ].x - diffvecz[ i ].x,
-                                texcoords[ i ].y - diffvecz[ i ].y,
-                                texcoords[ i ].z - diffvecz[ i ].z),
-                          tex_tiles_coords[ i ] );
-      xf += tile_texture( vec3( texcoords[ i ].x + diffvecx[ i ].x,
-                                texcoords[ i ].y + diffvecx[ i ].y,
-                                texcoords[ i ].z + diffvecx[ i ].z ),
-                          tex_tiles_coords[ i ] );
-      yf += tile_texture( vec3( texcoords[ i ].x + diffvecy[ i ].x,
-                                texcoords[ i ].y + diffvecy[ i ].y,
-                                texcoords[ i ].z + diffvecy[ i ].z ),
-                          tex_tiles_coords[ i ] );
-      zf += tile_texture( vec3( texcoords[ i ].x + diffvecz[ i ].x,
-                                texcoords[ i ].y + diffvecz[ i ].y,
-                                texcoords[ i ].z + diffvecz[ i ].z),
-                          tex_tiles_coords[ i ] );
+      c += tile_texture( coord, tex_tile_coord );
+      xb += tile_texture( coord - dx, tex_tile_coord );
+      yb += tile_texture( coord - dy, tex_tile_coord );
+      zb += tile_texture( coord - dz, tex_tile_coord );
+      xf += tile_texture( coord + dx, tex_tile_coord );
+      yf += tile_texture( coord + dy, tex_tile_coord );
+      zf += tile_texture( coord + dz, tex_tile_coord );
     }
 
   vec3
