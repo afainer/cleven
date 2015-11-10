@@ -98,7 +98,7 @@ are the rotation axis and an angle in degrees.
 is a location.
 
 :RM-FROM-WORLD -- remove the sprite from `*world*'."
-  (let* ((voxmap (load-voxmap voxmap-file t))
+  (let* ((voxmap (load-voxmap voxmap-file)) ; TODO Use mmap for big sprites
          (finalizer #'(lambda () (free-voxmap voxmap nil)))
          (location (locat))
          (origin (locat/ (voxmap-size voxmap) 2))

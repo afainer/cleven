@@ -38,15 +38,14 @@ At present the following has been implemented:
    is performed only for the geometry of the polygonal model.  No textures or
    colors of vertexes/polygons are used.
 
-Cleven was tested on SBCL and GNU/Linux.  It will not work on Windows,
-because voxel maps are loaded using memory mapping, which is not
-supported on Windows, but this support is planned.
+Cleven was tested on SBCL and GNU/Linux.  Memory mapped voxel maps on
+Windows are not supported, but this support is planned.
 
 Other issues and limitations are:
 
- - Too few sprites per rendering tile.
  - Rendering defects on boundaries of sprites tiles.
  - Implemented is only one light source: the sun.
+ - Implemented is only one camera.
  - Many others. ;-)
 
 Build and run

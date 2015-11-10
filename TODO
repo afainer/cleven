@@ -6,12 +6,13 @@
 * DONE Patch shaders upon render init
   with `maxtexnum', `voxsize', `tex_tile_size', `tex_tiles_coords'.
   Use *render-shader-loaded-hook*.
+* DONE Heap-allocated voxmaps for small sprites
 * TODO Too short variables names for wobs, texture tiles and texture attribs.
   In fragment.glsl and render.lisp.
-* TODO Heap-allocated voxmaps for small sprites
 * TODO Physics
   - [ ] physics.lisp sketch
   - [ ] Bullet C wrapper
+* TODO When signaling an error use appropriate conditions, not simple-error
 * TODO Pass sun and ambient light to shaders via uniforms
 * FIXME The camera viewable area
   Try this:

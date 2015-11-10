@@ -41,10 +41,35 @@ For simplicity the tile size is constant.")
   (savefn nil :read-only t)
   (freefn nil :read-only t))
 
+(defcfun fopen :pointer
+  (pathname :string)
+  (mode :string))
+
+(defcfun fclose :int
+  (stream :pointer))
+
+(defcfun fread :unsigned-int
+  (buf :pointer)
+  (size :unsigned-int)
+  (nmemb :unsigned-int)
+  (stream :pointer))
+
 (defun load-voxels (file)
   "Allocate foreign memory and load voxels from FILE."
-  ;; TODO Implement
-  (null-pointer))
+  (let* ((size (file-size file))
+         (voxels (foreign-alloc :unsigned-char
+                                :count size))
+         (fstr (fopen file "r")))
+    (unwind-protect-case ()
+        (progn
+          (if (null-pointer-p voxels)
+              (error "Can't allocate memory for ~A" file))
+          (if (null-pointer-p fstr)
+              (error "Can't open ~A" file))
+          (fread voxels 1 size fstr))
+      (:abort (foreign-free voxels))
+      (:always (fclose fstr)))
+    voxels))
 
 (defun save-voxels (voxels-file)
   "Save voxels for the voxel file"
@@ -78,7 +103,6 @@ location."
   ;; TODO Implement
   )
 
-(declaim (optimize (debug 2)))
 (defun load-voxmap (file &optional mmap)
   "Load voxel map from FILE.
 MMAP should have the following values:
@@ -105,7 +129,7 @@ MMAP should have the following values:
                      (munmap-file mem))
                  #'(lambda (voxmap save-p)
                      (when save-p (funcall savefn voxmap))
-                     (cffi:foreign-free mem))))
+                     (foreign-free mem))))
       (if (null-pointer-p addr)
           (error "Could not allocate memory for the voxel map ~A" file)
           (unwind-protect-case ()
