@@ -137,6 +137,17 @@ Is not used at the moment.")
   "Location in texels of the tile number TILENUM."
   (nth tilenum (tiles-coords)))
 
+(defun tex-tiles-coords-gl ()
+  "Generate the list of texture tiles coords in GL shader language."
+  (let ((s (apply #'cat
+                  (mapcar #'(lambda (l)
+                              (apply #'format
+                                     nil
+                                     "vec3( ~Ff , ~Ff , ~Ff ),"
+                                     (locat-coords l)))
+                          (tex-tiles-coords)))))
+    (subseq s 0 (1- (length s)))))
+
 (let ((buffer 0)
       (vertex-array 0)
       (texture 0))
@@ -489,9 +500,12 @@ into account different wobs orientations."
                                 (fragment *default-fragment-shader*))
     "Initialize shader program."
     (setq program
-          (use-shaders (read-file-into-string vertex)
-                       (read-file-into-string fragment)
-                       (cons +vertex-attrib-location+ "position"))
+          (let ((*package* (find-package :cleven)))
+            (use-shaders (preprocess-shader
+                          (read-file-into-string vertex))
+                         (preprocess-shader
+                          (read-file-into-string fragment))
+                         (cons +vertex-attrib-location+ "position")))
           camera-index (gl:get-uniform-location program "camera")
           texnum-index (gl:get-uniform-location program "texnum")
           diffvecx-index (gl:get-uniform-location program "diffvecx")

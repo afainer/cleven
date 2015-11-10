@@ -35,6 +35,6 @@
                (:file "voxmap")
                (:file "game")
                (:file "sprite")
-               (:file "shader")
                (:file "camera")
+               (:file "shader")
                (:file "render")))

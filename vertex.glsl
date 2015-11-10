@@ -23,8 +23,7 @@
 
 #version 330
 
-/* TODO Replace with a patchable marker */
-const int maxtexnum = 15;
+const int maxtexnum = #.(max-tex-attribs);
 
 in  vec3 position;
 in  vec3 texcoordsv[ maxtexnum ];

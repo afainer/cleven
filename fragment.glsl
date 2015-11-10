@@ -23,33 +23,17 @@
 
 #version 330
 
-/* TODO Replace with patchable markers */
 /* Maximum number of texture coord attribs */
-const int maxtexnum = 15;
+const int maxtexnum = #.(max-tex-attribs);
 
  /* Maximum number of wobs per rendering tile.
     TODO Describe why 9 */
 const int maxwobnum = maxtexnum * 9;
 
-const float voxsize  = 1.f / 256.f;
-const float voxsize2 = .5f / 256.f;
-const float tex_tile_size = 64.f/256.f;
-const vec3  tex_tiles_coords[] = vec3[]( vec3( 0.0f , 0.0f , 0.0f ),
-                                         vec3( 0.25f, 0.0f , 0.0f ),
-                                         vec3( 0.5f , 0.0f , 0.0f ),
-                                         vec3( 0.75f, 0.0f , 0.0f ),
-                                         vec3( 0.0f , 0.25f, 0.0f ),
-                                         vec3( 0.25f, 0.25f, 0.0f ),
-                                         vec3( 0.5f , 0.25f, 0.0f ),
-                                         vec3( 0.75f, 0.25f, 0.0f ),
-                                         vec3( 0.0f , 0.5f , 0.0f ),
-                                         vec3( 0.25f, 0.5f , 0.0f ),
-                                         vec3( 0.5f , 0.5f , 0.0f ),
-                                         vec3( 0.75f, 0.5f , 0.0f ),
-                                         vec3( 0.0f , 0.75f, 0.0f ),
-                                         vec3( 0.25f, 0.75f, 0.0f ),
-                                         vec3( 0.5f , 0.75f, 0.0f ),
-                                         vec3( 0.75f, 0.75f, 0.0f ) );
+const float voxsize  = 1.f / #.(max-tex-size).f;
+const float voxsize2 = .5f / #.(max-tex-size).f;
+const float tex_tile_size = #.(float (tex-tile-size) 0f0)f;
+const vec3  tex_tiles_coords[] = vec3[]( #.(tex-tiles-coords-gl) );
 
 uniform sampler3D sampler;
 

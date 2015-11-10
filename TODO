@@ -2,7 +2,10 @@
 
 #+TODO: TODO FIXME | DONE
 
-* FIXME The maximum number of texture tiles per render tile is too small
+* DONE The maximum number of texture tiles per render tile is too small
+* DONE Patch shaders upon render init
+  with `maxtexnum', `voxsize', `tex_tile_size', `tex_tiles_coords'.
+  Use *render-shader-loaded-hook*.
 * TODO Too short variables names for wobs, texture tiles and texture attribs.
   In fragment.glsl and render.lisp.
 * TODO Heap-allocated voxmaps for small sprites
@@ -30,9 +33,6 @@
 * TODO io_voxels: multithreaded rasterization
   The first version didn't work because Is_Inside is not reentrant.
   Copy mesh for each thread if it possible.
-* TODO Patch shaders upon render init
-  with `maxtexnum', `voxsize', `tex_tile_size', `tex_tiles_coords'.
-  Use *render-shader-loaded-hook*.
 
 * TODO Thread-local hooks
   Each thread should create its local hooks with gensyms as names and

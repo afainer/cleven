@@ -21,6 +21,10 @@
 
 (in-package #:cleven)
 
+(defvar *read-shader-seq* "#."
+  "String which designates a Lisp object in a shader program.
+See `read-shader'.")
+
 (defun make-shader (type shader)
   "Compile SHADER of TYPE."
   (let ((sh (gl:create-shader type)))
@@ -54,3 +58,39 @@ VERTEX-SHADER and FRAGMENT-SHADER are strings with shaders sources."
   "Delete the shader program PROGRAM."
   (mapc #'gl:delete-shader (gl:get-attached-shaders program))
   (gl:delete-program program))
+
+(defun read-shader (shader)
+  "Split SHADER source code to a list of strings and Lisp objects.
+Copy SHADER to a string until `*read-shader-seq*' occurrs, then read a
+Lisp object which follows `*read-shader-seq*'.  Put the string and the
+object to the result list and continue reading."
+  (let ((p 0)
+        (len (length shader))
+        (rlen (length *read-shader-seq*))
+        (lst))
+    (while (< p len)
+      (aif (search *read-shader-seq* shader :start2 p)
+           (progn
+             (when (< p it)
+               (push (subseq shader p it) lst))
+             (setq p (+ it rlen))
+             (when (< p len)
+               (multiple-value-bind (val pos)
+                   (read-from-string shader nil :eof :start p)
+                 (push val lst)
+                 (setq p pos))))
+           (progn
+             (push (subseq shader p) lst)
+             (return))))
+    (nreverse lst)))
+
+(defun preprocess-shader (shader)
+  "Make new shader by reading SHADER and evaluating Lisp code in it."
+  (let* ((s "")
+         (l (mapcar #'(lambda (v)
+                        (setq s (cat s "~A"))
+                        (if (stringp v)
+                            v
+                            (eval v)))
+                    (read-shader shader))))
+    (apply #'format nil s l)))
