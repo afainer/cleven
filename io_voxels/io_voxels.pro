@@ -1,4 +1,4 @@
-include (/home/alf/src/meshlab/src/shared.pri)
+include (../../meshlab/src/shared.pri)
 
 INCLUDEPATH += ../../meshlab/src ../../vcglib
 LIBPATH += ../../meshlab/src/distrib

@@ -56,7 +56,8 @@ For simplicity the tile size is constant.")
 
 (defun load-voxels (file)
   "Allocate foreign memory and load voxels from FILE."
-  (let* ((size (file-size file))
+  (let* ((file (namestring file))
+         (size (file-size file))
          (voxels (foreign-alloc :unsigned-char
                                 :count size))
          (fstr (fopen file "r")))

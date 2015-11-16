@@ -2,11 +2,9 @@
 
 #+TODO: TODO FIXME | DONE
 
-* DONE The maximum number of texture tiles per render tile is too small
-* DONE Patch shaders upon render init
-  with `maxtexnum', `voxsize', `tex_tile_size', `tex_tiles_coords'.
-  Use *render-shader-loaded-hook*.
-* DONE Heap-allocated voxmaps for small sprites
+* TODO Light-emitting objects
+  Imitate them in the fragment shader by rendering at maximum color
+  intensity.
 * TODO Too short variables names for wobs, texture tiles and texture attribs.
   In fragment.glsl and render.lisp.
 * TODO Physics

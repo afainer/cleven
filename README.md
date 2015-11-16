@@ -95,11 +95,30 @@ Make the game world and add some sprites.
 (wob :add-to-world *sprite2* (locat 90 80 70))
 ```
 
+See suzanne.lisp in the example directory.
+
 To convert polygonal models to voxmaps install
 [MeshLab](http://www.meshlab.org/),
 [Teem](http://teem.sourceforge.net/) and [Qt](https://www.qt.io/).
 
-Build io_voxels plugin for MeshLab.
+Conversion is preformed using io_voxels plugin for MeshLab.  To build
+it you should also install [VCG Library](http://vcg.sourceforge.net/)
+and MeshLab source code.
+
+Install MeshLab and VCG Library source code in the parent directory of
+Cleven repository.  If you install them in other places you should
+change paths in the file _io_voxels.pro_:
+
+```
+include (../../meshlab/src/shared.pri)
+INCLUDEPATH += ../../meshlab/src ../../vcglib
+LIBPATH += ../../meshlab/src/distrib
+DESTDIR = ../../meshlab/src/distrib/plugins
+
+```
+
+Then build io_voxels plugin.
+
 
 ```
 cd /path/to/cleven/io_voxels
@@ -107,11 +126,18 @@ qmake
 make
 ```
 
-Run conversion using `meshlabserver'.
+Resampling of voxel data is performed during conversion using _unu_
+command-line tool from Teem.  So make sure that it is in your search
+path (check PATH environment variable).
+
+Run conversion using _meshlabserver_.
 
 ```
 meshlabserver -i model.ply -o model.voxels
 ```
+
+Conversion generates two files: model and model.voxels.  The former
+file is a voxmap header, the latter is voxel data.
 
 Road Map
 --------
