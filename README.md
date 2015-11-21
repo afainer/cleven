@@ -11,14 +11,17 @@ editing of such objects can be quite simple and effective.  In fact,
 the majority of 3D editing operations are similar to editing
 operations in 2D raster graphics.
 
+Cleven's main goal is to explore new design approaches to video games
+and interactive visualization basing on the still unharnessed
+potential of volume graphics.
+
 Cleven has nothing else but volume objects.  However, this limitation
 helps drastically simplify its implementation: there is no mixed
 polygon-volume rendering, we deal with only one data format and so on.
 
-For volume rendering a simple slice-based OpenGL renderer is
-implemented.  So far, the renderer has only orthographic projection,
-therefore Cleven is intended to be used for games with isometric
-graphics.
+So far, Cleven has a simple slice-based OpenGL renderer with
+orthographic projection, basic support of volume sprites and simple
+converter from polygonal models to voxel maps.
 
 Current status
 --------------
