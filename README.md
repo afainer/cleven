@@ -19,8 +19,8 @@ Cleven has nothing else but volume objects.  However, this limitation
 helps drastically simplify its implementation: there is no mixed
 polygon-volume rendering, we deal with only one data format and so on.
 
-So far, Cleven has a simple slice-based OpenGL renderer with
-orthographic projection, basic support of volume sprites and simple
+So far, it has a simple slice-based OpenGL renderer with an
+orthographic projection, basic support of volume sprites and a simple
 converter from polygonal models to voxel maps.
 
 Current status
@@ -82,9 +82,9 @@ Cleven sandbox.
 The default key binding in the sandbox:
 
  - Left, right: changes the camera azimuth, i.e. the camera is rotated
-   in the horizontal plane and around the point `*camera-location*`.
+   in the horizontal plane and around the point ```*camera-location*```.
  - Up, down: changes the camera tilt, i.e. the camera is rotated in
-   the vertical plane and around the point `*camera-location*`.
+   the vertical plane and around the point ```*camera-location*```.
  - +, -: zoom in and zoom out.
  - q: quit the sandbox.
 
@@ -98,15 +98,14 @@ Make the game world and add some sprites.
 (wob :add-to-world *sprite2* (locat 90 80 70))
 ```
 
-See suzanne.lisp in the example directory.
+See _suzanne.lisp_ in the example directory.
 
 To convert polygonal models to voxmaps install
 [MeshLab](http://www.meshlab.org/),
-[Teem](http://teem.sourceforge.net/) and [Qt](https://www.qt.io/).
-
-Conversion is preformed using io_voxels plugin for MeshLab.  To build
-it you should also install [VCG Library](http://vcg.sourceforge.net/)
-and MeshLab source code.
+[Teem](http://teem.sourceforge.net/).  Conversion is preformed using
+io_voxels plugin for MeshLab.  To build it you should also install
+[VCG Library](http://vcg.sourceforge.net/), MeshLab source code and
+[Qt](https://www.qt.io/).
 
 Install MeshLab and VCG Library source code in the parent directory of
 Cleven repository.  If you install them in other places you should
@@ -139,7 +138,7 @@ Run conversion using _meshlabserver_.
 meshlabserver -i model.ply -o model.voxels
 ```
 
-Conversion generates two files: model and model.voxels.  The former
+Conversion generates two files: _model_ and _model.voxels_.  The former
 file is a voxmap header, the latter is voxel data.
 
 Road Map

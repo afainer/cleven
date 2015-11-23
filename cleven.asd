@@ -26,7 +26,7 @@
   :author "Andrey Fainer <fandrey@gmx.com>"
   :licence "MIT"
   :serial t
-  :depends-on (:alexandria :sdl2)
+  :depends-on (:alexandria :cl-fad :sdl2)
   :components ((:file "package")
                (:file "utils")
                (:file "thread")
