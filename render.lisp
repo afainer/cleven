@@ -21,8 +21,6 @@
 
 (in-package #:cleven)
 
-(declaim (optimize (debug 2)))
-
 (defvar *render-init-hook* ()
   "Hook run before the rendering is started.")
 
@@ -238,7 +236,7 @@ Is not used at the moment.")
                               (translation-matrix-loc (locat- loc)))
                     t)))))
 
-(let (woblocs wobnum texidx texnum rotmats)
+(let (woblocs wobnum texidx texnum rotmats emit)
   (defun make-fill-tslices (slice dir ar texis wobs rtileloc)
     "Make functions to fill the GL buffer with texture slices.
 Also, make available the following: wobs locations, wobs number,
@@ -250,7 +248,8 @@ matrices.  See `wobs-locations', `wobs-number', `tex-attribs-indexes',
             wobnum 0
             texidx nil
             texnum 0
-            rotmats nil)
+            rotmats nil
+            emit nil)
       (dolist (ob wobs)
         (multiple-value-bind (fn rot loc)
             (make-fill-tslice slice dir ar (car texis) ob rtileloc)
@@ -267,6 +266,7 @@ matrices.  See `wobs-locations', `wobs-number', `tex-attribs-indexes',
                   (incf texnum)
                   (pop texis)))
             (push loc woblocs)
+            (push (if (wob :emit-light ob) 1 0) emit)
             (incf wobnum)
             ;; FIXME The rest of wobs may have ROT from ROTMATS.  We
             ;; should not to ignore them.
@@ -274,7 +274,8 @@ matrices.  See `wobs-locations', `wobs-number', `tex-attribs-indexes',
                 (return)))))
       (setq woblocs (nreverse woblocs)
             texidx (nreverse texidx)
-            rotmats (nreverse rotmats))
+            rotmats (nreverse rotmats)
+            emit (nreverse emit))
       (nreverse fns)))
 
   (defun wobs-locations ()
@@ -297,7 +298,11 @@ wob."
 
   (defun wobs-rotmats ()
     "Wobs inverted rotations matrices."
-    rotmats))
+    rotmats)
+
+  (defun wobs-emit-light ()
+    "Wobs which are simulate light emission."
+    emit))
 
 (macrolet
     ((mkslicesfn (axis sign)
@@ -372,7 +377,8 @@ WOBS is a list of wobs in the tile."
   (let ((vi 0)
         (ti +tile-floats+))
     (cffi:with-foreign-object (ar :float (+ +tile-floats+
-                                            (* (max-tex-attribs) +tile-floats+)))
+                                            (* (max-tex-attribs)
+                                               +tile-floats+)))
       (progn
         (make-slices loc ar vi
                      (map0-n #'(lambda (i)
@@ -383,11 +389,12 @@ WOBS is a list of wobs in the tile."
         (ensure-bind)
         (gl:buffer-data :array-buffer
                         :static-draw
-                        (gl::make-gl-array-from-pointer ar
-                                                        :float
-                                                        (+ +tile-floats+
-                                                           (* (tex-attribs-number)
-                                                              +tile-floats+))))
+                        (gl::make-gl-array-from-pointer
+                         ar
+                         :float
+                         (+ +tile-floats+
+                            (* (tex-attribs-number)
+                               +tile-floats+))))
         ;; 3 floats per vertex, 3 float per texture coordinate
         (gl:vertex-attrib-pointer +vertex-attrib-location+
                                   3 :float nil 0 0)
@@ -436,7 +443,8 @@ WOBS is a list of wobs in the tile."
       (diffvecz-index -1)
       (woblocs-index -1)
       (wobnum-index -1)
-      (texidx-index -1))
+      (texidx-index -1)
+      (emitlight-index -1))
   (defun load-uniforms ()
     "Load uniform variables."
     (flet ((load-diffvec ()
@@ -486,14 +494,22 @@ into account different wobs orientations."
                (let ((i -1))
                  (dolist (n (tex-attribs-indexes))
                    (setf (mem-aref ar '%gl:int (incf i)) n)))
-               (%gl:uniform-1iv texidx-index (wobs-number) ar))))
+               (%gl:uniform-1iv texidx-index (wobs-number) ar)))
+
+           (load-emitidx ()
+             (cffi:with-foreign-object (ar '%gl:int (wobs-number))
+               (let ((i -1))
+                 (dolist (n (wobs-emit-light))
+                   (setf (mem-aref ar '%gl:int (incf i)) n)))
+               (%gl:uniform-1iv emitlight-index (wobs-number) ar))))
 
       (gl:uniform-matrix camera-index 4 (vector (camera-view)))
       (gl:uniformi texnum-index (tex-attribs-number))
       (load-diffvec)
       (load-woblocs)
       (gl:uniformi wobnum-index (wobs-number))
-      (load-texidx)))
+      (load-texidx)
+      (load-emitidx)))
 
   (defun render-load-shaders (&optional
                                 (vertex *default-vertex-shader*)
@@ -513,7 +529,8 @@ into account different wobs orientations."
           diffvecz-index (gl:get-uniform-location program "diffvecz")
           woblocs-index (gl:get-uniform-location program "woblocs")
           wobnum-index (gl:get-uniform-location program "wobnum")
-          texidx-index (gl:get-uniform-location program "texidx"))
+          texidx-index (gl:get-uniform-location program "texidx")
+          emitlight-index (gl:get-uniform-location program "emitlightidx"))
     (let ((sampler (gl:get-uniform-location program "sampler")))
       (when (< sampler 0)
         (error "The sampler uniform is not found"))
@@ -530,7 +547,8 @@ into account different wobs orientations."
           diffvecz-index -1
           woblocs-index -1
           wobnum-index -1
-          texidx-index -1)))
+          texidx-index -1
+          emitlight-index -1)))
 
 (defun define-reload-shaders ()
   "Define the render thread function `reload-shaders'."

@@ -39,7 +39,8 @@ For simplicity the tile size is constant.")
   (size (locat) :read-only t)
   (tiles nil :read-only t)
   (savefn nil :read-only t)
-  (freefn nil :read-only t))
+  (freefn nil :read-only t)
+  (header nil))
 
 (defcfun fopen :pointer
   (pathname :string)
@@ -77,33 +78,45 @@ For simplicity the tile size is constant.")
   ;; TODO Implement
   )
 
-(defmacro destruct-voxmap-header (header-file &body body)
-  "Evaluate forms of BODY within the voxmap header elements.
-The header elements bound to the following variables:
+(declaim (inline voxmap-prop))
+(defun voxmap-prop (voxmap prop)
+  "Get the property PROP of VOXMAP.
+Voxmap properties is a assoc list which is stored in a voxmap header."
+  (cdr (assoc prop (voxmap-header voxmap) :test #'sym-eq)))
 
-VOXELS-FILE -- path to the voxels data.
-
-SIZE -- width, height and depth of the voxmap in voxels; SIZE is
-location."
-  (with-gensyms (hdr hdrfile voxfile)
-    `(flet ((a (item alist)
-              (cdr (assoc item alist :test #'sym-eq))))
-       (let* ((,hdrfile ,header-file)
-              (,hdr (read-file ,hdrfile))
-              (,voxfile (a 'voxels ,hdr))
-              (voxels-file (if (pathname= (pathname-directory-pathname ,voxfile)
-                                          #P"")
-                               (dir+file (pathname-directory-pathname ,hdrfile)
-                                         ,voxfile)
-                               ,voxfile))
-              (size (apply #'locat (a 'size ,hdr))))
-         ,@body))))
+(defmacro with-voxmap-props ((voxmap-or-header &rest props) &body body)
+  "Evaluate BODY with PROPS bound to values of header properties.
+If VOXMAP-OR-HEADER is cons then it used as a header.  Otherwise it
+should be a voxmap."
+  (with-gensyms (gvoh gassoc)
+    `(let* ((,gvoh ,voxmap-or-header)
+            (,gassoc (if (consp ,gvoh)
+                         #'(lambda (p) (cdr (assoc p ,gvoh :test #'sym-eq)))
+                         #'(lambda (p) (voxmap-prop p ,gvoh))))
+            ,@(mapcar #'(lambda (prop)
+                          `(,prop (funcall ,gassoc ',prop)))
+                      props))
+       ,@body)))
 
 (defun save-header (voxmap header voxfile)
   "Save HEADER of VOXMAP."
   ;; TODO Implement
   )
 
+(defun find-voxels (header-file voxels-file)
+  "Get a pathname of VOXELS-FILE using the pathname HEADER-FILE.
+If VOXELS-FILE has only name and type components then try to find it
+where is HEADER-FILE.  Return VOXELS-FILE as is if it does not exist
+here."
+  (if (equal #P"" (pathname-directory-pathname voxels-file))
+      (let ((v (dir+file (pathname-directory-pathname header-file)
+                         voxels-file)))
+        (if (file-exists-p v)
+            v
+            voxels-file))
+      voxels-file))
+
+(declaim (optimize (debug 3)))
 (defun load-voxmap (file &optional mmap)
   "Load voxel map from FILE.
 MMAP should have the following values:
@@ -115,36 +128,39 @@ MMAP should have the following values:
     (* width height depth).
 
   - other values: Use memory mapping."
-  (destruct-voxmap-header file
-    (iflet* (or (and (numberp mmap) (> mmap (apply #'* (locat-coords size))))
-                mmap)
-        ((mem (mmap-file voxels-file t) (load-voxels voxels-file))
-         (addr (mmapped-addr mem) mem)
-         (savefn #'(lambda (voxmap)
-                     (save-header voxmap file voxels-file))
-                 #'(lambda (voxmap)
-                     (save-header voxmap file voxels-file)
-                     (save-voxels voxels-file)))
-         (freefn #'(lambda (voxmap save-p)
-                     (when save-p (funcall savefn voxmap))
-                     (munmap-file mem))
-                 #'(lambda (voxmap save-p)
-                     (when save-p (funcall savefn voxmap))
-                     (foreign-free mem))))
-      (if (null-pointer-p addr)
-          (error "Could not allocate memory for the voxel map ~A" file)
-          (unwind-protect-case ()
-              (let* ((tsize (trunc-locat size +voxmap-tile-size+))
-                     (tiles (make-array (nreverse (locat-coords tsize)))))
-                (dobox (loc (locat) (locat- tsize 1))
-                  (with-locat (loc)
-                    (setf (aref tiles z y x) addr))
-                  (incf-pointer addr +voxmap-tile-bytes+))
-                (make-voxmap :size size
-                             :tiles tiles
-                             :savefn savefn
-                             :freefn freefn))
-            (:abort (funcall freefn nil nil)))))))
+  (let ((header (read-file file)))
+    (with-voxmap-props (header voxels size)
+      (setq voxels (find-voxels file voxels))
+      (iflet* (or (and (numberp mmap) (> mmap (apply #'* (locat-coords size))))
+                  mmap)
+          ((mem (mmap-file voxels t) (load-voxels voxels))
+           (addr (mmapped-addr mem) mem)
+           (savefn #'(lambda (voxmap)
+                       (save-header voxmap file voxels))
+                   #'(lambda (voxmap)
+                       (save-header voxmap file voxels)
+                       (save-voxels voxels)))
+           (freefn #'(lambda (voxmap save-p)
+                       (when save-p (funcall savefn voxmap))
+                       (munmap-file mem))
+                   #'(lambda (voxmap save-p)
+                       (when save-p (funcall savefn voxmap))
+                       (foreign-free mem))))
+        (if (null-pointer-p addr)
+            (error "Could not allocate memory for the voxel map ~A" file)
+            (unwind-protect-case ()
+                (let* ((tsize (trunc-locat size +voxmap-tile-size+))
+                       (tiles (make-array (nreverse (locat-coords tsize)))))
+                  (dobox (loc (locat) (locat- tsize 1))
+                    (with-locat (loc)
+                      (setf (aref tiles z y x) addr))
+                    (incf-pointer addr +voxmap-tile-bytes+))
+                  (make-voxmap :size size
+                               :tiles tiles
+                               :savefn savefn
+                               :freefn freefn
+                               :header header))
+              (:abort (funcall freefn nil nil))))))))
 
 (defun save-voxmap (voxmap)
   "Save voxels of VOXMAP."

@@ -27,8 +27,8 @@
 const int maxtexnum = #.(max-tex-attribs);
 
  /* Maximum number of wobs per rendering tile.
-    TODO Describe why 9 */
-const int maxwobnum = maxtexnum * 9;
+    XXX '-1' because the number of uniform elements are exhausted. */
+const int maxwobnum = maxtexnum * 9 - 1;
 
 const float voxsize  = 1.f / #.(max-tex-size).f;
 const float voxsize2 = .5f / #.(max-tex-size).f;
@@ -44,6 +44,7 @@ uniform vec3 diffvecz[ maxtexnum ];
 uniform vec3 woblocs[ maxwobnum ];
 uniform int  wobnum;
 uniform int  texidx[ maxwobnum ];
+uniform int  emitlightidx[ maxwobnum ];
 
 in  vec3 texcoords[ maxtexnum ];
 out vec4 color;
@@ -80,7 +81,15 @@ vec4 tile_texture( vec3 coord, vec3 tile_coord )
 
 void main()
 {
-  vec4 c = vec4( 0, 0, 0, 0 ), xb = c, yb = c, zb = c, xf = c, yf = c, zf = c;
+  vec4
+    c  = vec4( 0, 0, 0, 0 ),
+    e  = c,
+    xb = c,
+    yb = c,
+    zb = c,
+    xf = c,
+    yf = c,
+    zf = c;
 
   for(int i = 0; i < wobnum; ++i)
     {
@@ -94,13 +103,18 @@ void main()
       if( out_tile( coord, tex_tile_coord ) )
         continue;
 
-      c += tile_texture( coord, tex_tile_coord );
-      xb += tile_texture( coord - dx, tex_tile_coord );
-      yb += tile_texture( coord - dy, tex_tile_coord );
-      zb += tile_texture( coord - dz, tex_tile_coord );
-      xf += tile_texture( coord + dx, tex_tile_coord );
-      yf += tile_texture( coord + dy, tex_tile_coord );
-      zf += tile_texture( coord + dz, tex_tile_coord );
+      if( emitlightidx[ i ] == 1 )
+        e += tile_texture( coord, tex_tile_coord );
+      else
+        {
+          c += tile_texture( coord, tex_tile_coord );
+          xb += tile_texture( coord - dx, tex_tile_coord );
+          yb += tile_texture( coord - dy, tex_tile_coord );
+          zb += tile_texture( coord - dz, tex_tile_coord );
+          xf += tile_texture( coord + dx, tex_tile_coord );
+          yf += tile_texture( coord + dy, tex_tile_coord );
+          zf += tile_texture( coord + dz, tex_tile_coord );
+        }
     }
 
   vec3
@@ -111,5 +125,5 @@ void main()
 
   float d = length( diff ) < .0001f ? 1.0f : dot( sun, normalize( diff ) );
 
-  color = vec4( c.rgb * max( d, 0 ), c.a);
+  color = vec4( c.rgb * max( d, 0 ), c.a) + e;
 }

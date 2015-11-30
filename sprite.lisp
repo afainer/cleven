@@ -97,7 +97,9 @@ are the rotation axis and an angle in degrees.
 :ADD-TO-WORLD -- put the sprite to `*world*'; the operation argument
 is a location.
 
-:RM-FROM-WORLD -- remove the sprite from `*world*'."
+:RM-FROM-WORLD -- remove the sprite from `*world*'.
+
+:EMIT-LIGHT -- returns non-nil is the sprite simulate light emission."
   (let* ((voxmap (load-voxmap voxmap-file)) ; TODO Use mmap for big sprites
          (finalizer #'(lambda () (free-voxmap voxmap nil)))
          (location (locat))
@@ -134,14 +136,15 @@ is a location.
               :mv mv
               :rot rot
               :add-to-world #'(lambda (loc)
-                              (setq location loc)
-                              (do-sprite-tiles (tiles location)
-                                (dolist (loc location-locs)
-                                  (add-to-world tile loc))))
+                                (setq location loc)
+                                (do-sprite-tiles (tiles location)
+                                  (dolist (loc location-locs)
+                                    (add-to-world tile loc))))
               :rm-from-world #'(lambda ()
-                               (do-sprite-tiles (tiles location)
-                                 (dolist (loc location-locs)
-                                   (remove-from-world tile loc)))))
+                                 (do-sprite-tiles (tiles location)
+                                   (dolist (loc location-locs)
+                                     (remove-from-world tile loc))))
+              :emit-light #'(lambda () (voxmap-prop voxmap 'emit-light)))
              tileloc)
             tiles))
     (trivial-garbage:finalize tiles finalizer)

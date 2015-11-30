@@ -48,6 +48,7 @@
                 #:getmsg
                 #:sendmsg)
   (:import-from #:cl-fad
+                #:file-exists-p
                 #:pathname-as-directory
                 #:pathname-directory-pathname)
   (:import-from #:sdl2
