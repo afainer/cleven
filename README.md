@@ -59,9 +59,11 @@ Install [SDL 2.0](http://www.libsdl.org/),
 [Quicklisp](http://www.quicklisp.org/).
 
 Run SBCL and install Common Lisp bindings for SDL 2.0 using Quicklisp.
+Also, install _cl-fad_.
 
 ```Lisp
 (ql:quickload "sdl2")
+(ql:quickload "cl-fad")
 ```
 
 Load the Cleven system.
