@@ -108,13 +108,18 @@ Each function is called on one argument, the current game window.")
   "Quit game sending :quit message to the main thread."
   (sendmsg *main-thread-channel* :quit))
 
-(declaim (optimize (debug 3)))
+(defstruct (wob (:constructor %make-wob))
+  "The world object structure.
+The structure is defined for `wob' type and its `print-object'
+method."
+  operations)
+
 (defun make-wob (name &rest operations)
   "Make a world object with NAME and OPERATIONS.
 World object is object which is placed in the game world at specified
 locations.  Sprites put them in `*world*' and the renderer read them.
 
-NAME is the name of the created object.  At the moment it do not used.
+NAME is the name of the created object.
 
 OPERATIONS is a list with even number of elements
 
@@ -134,18 +139,23 @@ particular operation of an world object use the function `wob'."
       (if (eq (car op) :name)
           (error "Wrong name of an operation: ~A." :name))
       (setf (gethash (car op) operats) (cadr op)))
-    #'(lambda (operat &rest args)
-        (apply (gethash operat operats
-                        ;; Maybe return two values as `gethash'
-                        ;; does
-                        #'(lambda (&rest args)
-                            (declare (ignore args))))
-               args))))
+    (%make-wob :operations
+               #'(lambda (operat &rest args)
+                   (apply (gethash operat operats
+                                   ;; Maybe return two values as `gethash'
+                                   ;; does
+                                   #'(lambda (&rest args)
+                                       (declare (ignore args))))
+                          args)))))
 
 (declaim (inline wob))
 (defun wob (op ob &rest args)
   "Apply the operation OP on the world object OB and ARGS."
-  (apply ob op args))
+  (apply (wob-operations ob) op args))
+
+(defmethod print-object ((ob wob) stream)
+  (print-unreadable-object (ob stream :type t)
+    (format stream "~A" (wob :name ob))))
 
 ;;; FIXME Use *world-lock*
 (defvar *world* nil
