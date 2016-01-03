@@ -64,6 +64,12 @@ Otherwise evaluate ELSE. The name `aif' stands for `anaphoric if'."
   `(let ((it ,test))
      (if it ,then ,else)))
 
+(defmacro aif* (expr test then &optional else)
+  "Bind value of EXPR to IT and if TEST is non-nil evaluate THEN.
+Otherwise evaluate ELSE."
+  `(let ((it ,expr))
+     (if ,test ,then ,else)))
+
 (defmacro awhen (test &body forms)
   "Assign TEST to the variable IT. If IT is non-nil evaluate FORMS.
 Otherwise return NIL. The name `awhen' stands for `anaphoric when'."

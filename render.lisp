@@ -82,11 +82,6 @@ Is not used at the moment.")
         (sdl2:gl-make-current win glc)
         (let ((*render-window* win)
               (*render-glc* glc))
-          ;; May be put texturing in the init hook?
-          ;; Is it necessary?
-          ;; (gl:tex-env :texture-env :texture-env-mode :replace)
-          ;; (gl:enable :texture-2d)
-          ;; TODO Put into the init hook
           (gl:disable :dither)
           (gl:enable :alpha-test)
           (gl:alpha-func :greater 0)
@@ -376,9 +371,9 @@ wob."
 WOBS is a list of wobs in the tile."
   (let ((vi 0)
         (ti +tile-floats+))
-    (cffi:with-foreign-object (ar :float (+ +tile-floats+
-                                            (* (max-tex-attribs)
-                                               +tile-floats+)))
+    (with-foreign-object (ar :float (+ +tile-floats+
+                                       (* (max-tex-attribs)
+                                          +tile-floats+)))
       (progn
         (make-slices loc ar vi
                      (map0-n #'(lambda (i)
@@ -456,9 +451,9 @@ into account different wobs orientations."
              (let ((n (* (tex-attribs-number) 3))
                    (i 0)
                    (d (/ 1 (max-tex-size))))
-               (cffi:with-foreign-objects ((ax '%gl:float n)
-                                           (ay '%gl:float n)
-                                           (az '%gl:float n))
+               (with-foreign-objects ((ax '%gl:float n)
+                                      (ay '%gl:float n)
+                                      (az '%gl:float n))
                  (dolist (r (wobs-rotmats))
                    (let ((x (transform r (locat d)))
                          (y (transform r (locat 0 d)))
@@ -479,7 +474,7 @@ into account different wobs orientations."
                  (%gl:uniform-3fv diffvecz-index n az))))
 
            (load-woblocs ()
-             (cffi:with-foreign-object (ar '%gl:float (* 3 (wobs-number)))
+             (with-foreign-object (ar '%gl:float (* 3 (wobs-number)))
                (let ((i 0))
                  (dolist (l (wobs-locations))
                    (with-locat (l)
@@ -490,14 +485,14 @@ into account different wobs orientations."
                (%gl:uniform-3fv woblocs-index (wobs-number) ar)))
 
            (load-texidx ()
-             (cffi:with-foreign-object (ar '%gl:int (wobs-number))
+             (with-foreign-object (ar '%gl:int (wobs-number))
                (let ((i -1))
                  (dolist (n (tex-attribs-indexes))
                    (setf (mem-aref ar '%gl:int (incf i)) n)))
                (%gl:uniform-1iv texidx-index (wobs-number) ar)))
 
            (load-emitidx ()
-             (cffi:with-foreign-object (ar '%gl:int (wobs-number))
+             (with-foreign-object (ar '%gl:int (wobs-number))
                (let ((i -1))
                  (dolist (n (wobs-emit-light))
                    (setf (mem-aref ar '%gl:int (incf i)) n)))

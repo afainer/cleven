@@ -22,6 +22,8 @@
 (defpackage #:cleven
   (:use #:common-lisp)
   (:import-from #:alexandria
+                #:make-keyword
+                #:make-gensym
                 #:with-gensyms
                 #:symbolicate
                 #:read-file-into-string
@@ -31,6 +33,8 @@
                 #:clamp
                 #:copy-array)
   (:import-from #:cffi
+                #:define-foreign-library
+                #:use-foreign-library
                 #:defcenum
                 #:defcfun
                 #:defctype
@@ -42,7 +46,11 @@
                 #:foreign-alloc
                 #:foreign-free
                 #:foreign-pointer
-                #:mem-aref)
+                #:foreign-funcall
+                #:mem-ref
+                #:mem-aref
+                #:with-foreign-object
+                #:with-foreign-objects)
   (:import-from #:trivial-channels
                 #:make-channel
                 #:getmsg
