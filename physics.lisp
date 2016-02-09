@@ -19,24 +19,41 @@
 ;;; TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;; SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(in-package #:asdf)
+(in-package #:cleven)
 
-(defsystem :cleven
-  :description "Cleven - Common Lisp Experimental Volume Engine"
-  :author "Andrey Fainer <fandrey@gmx.com>"
-  :licence "MIT"
-  :serial t
-  :depends-on (:alexandria :cl-fad :sdl2)
-  :components ((:file "package")
-               (:file "utils")
-               (:file "thread")
-               (:file "mmap")
-               (:file "location")
-               (:file "voxmap")
-               (:file "game")
-               (:file "sprite")
-               (:file "camera")
-               (:file "shader")
-               (:file "render")
-               (:file "foreign")
-               (:file "physics")))
+;;; For simplicity the physics simulation is performed in the render thread.
+
+(defvar *physics* nil
+  "TODO Doc")
+
+(define-foreign-library libphysics
+  ;; FIXME Search path
+  (t (:default "./libbullet")))
+
+(use-foreign-library libphysics)
+
+(defun init-physics ()
+  "Create discrete dynamics world."
+  (if *physics*
+      (free-physics))
+  (aif* (foreign-funcall "init_physics" :pointer)
+        (not (null-pointer-p it))
+        (setq *physics* it)))
+
+(defun free-physics ()
+  "Delete discrete dynamics world."
+  (foreign-funcall "free_physics" :pointer *physics*)
+  (setq *physics* nil))
+
+(defun physics-gravity ()
+  "Get physics gravity"
+  (with-foreign-locats (loc)
+    (cfuncall "get_gravity" :pointers (*physics* loc))
+    loc))
+
+(defun (setf physics-gravity) (new)
+  "Set physics gravity"
+  (cfuncall "set_gravity"
+            :pointer *physics*
+            locat new)
+  new)

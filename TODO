@@ -2,9 +2,6 @@
 
 #+TODO: TODO FIXME | DONE
 
-* DONE Light-emitting objects
-  Imitate them in the fragment shader by rendering at maximum color
-  intensity.
 * TODO Too short variables names for wobs, texture tiles and texture attribs.
   In fragment.glsl and render.lisp.
 * TODO Physics

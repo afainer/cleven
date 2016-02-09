@@ -392,6 +392,7 @@ non-nil, in which case FUNCTION is added at the end.
 
 HOOK should be a symbol, and FUNCTION may be any valid function or
 symbol bound to a function."
+  ;; FIXME Appending
   (symbol-macrolet ((svh (symbol-value hook)))
     (unless (member function svh)
       (if append

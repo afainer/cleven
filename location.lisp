@@ -33,6 +33,20 @@
   "Make a location with elements equal to N."
   (locat n n n))
 
+(declaim (inline locatx locaty locatz))
+
+(defun locatx (loc)
+  "TODO Doc"
+  (car loc))
+
+(defun locaty (loc)
+  "TODO Doc"
+  (cadr loc))
+
+(defun locatz (loc)
+  "TODO Doc"
+  (caddr loc))
+
 (defmacro deflocop (op)
   "Define a location operation OP."
   `(defun ,(symbolicate 'locat op) (loc-or-num &rest more)

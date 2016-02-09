@@ -22,6 +22,7 @@
 (defpackage #:cleven
   (:use #:common-lisp)
   (:import-from #:alexandria
+                #:ensure-cons
                 #:make-keyword
                 #:make-gensym
                 #:with-gensyms
