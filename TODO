@@ -2,11 +2,14 @@
 
 #+TODO: TODO FIXME | DONE
 
-* TODO Too short variables names for wobs, texture tiles and texture attribs.
-  In fragment.glsl and render.lisp.
+* DONE Cmake for the bullet wrapper
+* TODO Replace location with vec from sga
+* TODO Describe the bullet wrapper building in README
 * TODO Physics
   - [ ] physics.lisp sketch
   - [ ] Bullet C wrapper
+* TODO Too short variables names for wobs, texture tiles and texture attribs.
+  In fragment.glsl and render.lisp.
 * TODO When signaling an error use appropriate conditions, not simple-error
 * TODO Pass sun and ambient light to shaders via uniforms
 * FIXME The camera viewable area
