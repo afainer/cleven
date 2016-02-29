@@ -167,18 +167,20 @@ which contains a list of wobs.")
 (defmacro with-world-tile ((tilevar loc &optional (lock-tile t)) &body body)
   "Evaluate forms of BODY with TILEVAR bound to the tile at LOC."
   (with-gensyms (gtileloc gmax)
-    `(let ((,gtileloc (trunc-locat ,loc +voxmap-tile-size+))
-           (,gmax (locat- (apply #'locat
-                                 (nreverse (array-dimensions *world*))) 1)))
-       (when (inboxp ,gtileloc (locat) ,gmax)
+    `(let ((,gtileloc (trunc-vec ,loc +voxmap-tile-size+))
+           (,gmax (vec- (apply #'vec
+                               (nreverse (array-dimensions *world*)))
+                        (vecn 1))))
+       (when (inboxp ,gtileloc (vec) ,gmax)
          (let ((,tilevar (apply #'aref
                                 *world*
-                                (nreverse (locat-coords ,gtileloc)))))
+                                ;; TODO Convert GTILELOC to a fixnum array
+                                (mapcar #'truncate
+                                        (nreverse (vecxyz ,gtileloc))))))
            ,@(if lock-tile
                  `((bt:with-lock-held ((car ,tilevar)) ,@body))
                  body))))))
 
-(declaim (optimize (debug 3)))
 (defun world-tile (loc)
   "Get wobs in the tile at LOC.
 LOC is specified in voxels, e.g. locations range from (0 0 0) to (s-1
@@ -220,9 +222,13 @@ of +voxmap-tile-size+."
                           (ceiling (/ s +voxmap-tile-size+)))
                       (list sizez sizey sizex)))
          (ar (make-array dim)))
-    (dobox (loc (locat) (apply #'locat (mapcar #'1- (nreverse dim))))
-      (with-locat (loc)
-        (setf (aref ar z y x) (list (bt:make-lock)))))
+    (dobox (loc (vec) (apply #'vec (mapcar #'1- (nreverse dim))))
+      ;; TODO Convert LOC to a fixnum array
+      (setf (aref ar
+                  (truncate (vecz loc))
+                  (truncate (vecy loc))
+                  (truncate (vecx loc)))
+            (list (bt:make-lock))))
     ar))
 
 (defun make-global-world (sizex sizey sizez)

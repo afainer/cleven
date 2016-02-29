@@ -460,7 +460,7 @@ The variable VAR is bound to the value of SHARED."
 (declaim (inline deg2rad))
 (defun deg2rad (x)
   "Convert degrees to radians."
-  (* x (/ (float pi) 180)))
+  (* x (/ (float pi 0f0) 180)))
 
 (declaim (inline cods))
 (defun cosd (x)
@@ -473,82 +473,3 @@ X in degrees."
   "Sine of X.
 X in degrees."
   (sin (deg2rad x)))
-
-;;; TODO Use sb-cga
-
-(declaim (inline identity-matrix))
-(defun identity-matrix ()
-  "Make an identity matrix."
-  (make-array '(4 4)
-              :initial-contents
-              '((1 0 0 0)
-                (0 1 0 0)
-                (0 0 1 0)
-                (0 0 0 1))))
-
-(defun mat44mul (&rest matrices)
-  "Trivial matrix multiplication.
-Multiplications are applied in reverse order, i.e. the last matrix is
-applied first."
-  (flet ((mul (m1 m2)
-           (flet ((m (i j)
-                    (+ (* (aref m1 i 0) (aref m2 0 j))
-                       (* (aref m1 i 1) (aref m2 1 j))
-                       (* (aref m1 i 2) (aref m2 2 j))
-                       (* (aref m1 i 3) (aref m2 3 j)))))
-             (make-array '(4 4)
-                         :initial-contents
-                         (list
-                          (list (m 0 0) (m 0 1) (m 0 2) (m 0 3))
-                          (list (m 1 0) (m 1 1) (m 1 2) (m 1 3))
-                          (list (m 2 0) (m 2 1) (m 2 2) (m 2 3))
-                          (list (m 3 0) (m 3 1) (m 3 2) (m 3 3)))))))
-    (if (null matrices)
-        (identity-matrix)
-        (reduce #'mul matrices))))
-
-(defun translation-matrix (x y z)
-  "Make a translation matrix from vector X Y Z."
-  (let ((im (identity-matrix)))
-    (setf (aref im 0 3) x
-          (aref im 1 3) y
-          (aref im 2 3) z)
-    im))
-
-(declaim (optimize (debug 3)))
-(defun rotation-matrix (axis angle)
-  "Make a matrix with rotation around AXIS with ANGLE degrees."
-  (let ((im (identity-matrix))
-        (r1)
-        (r2)
-        (s1 #'-)
-        (s2 #'+))
-    (iflet (symbolp axis)
-        ((fn #'eq #'=)
-         (val '(:x :y :z) '(0 1 2)))
-      (cond ((funcall fn axis (car val))   (setq r1 1 r2 2))
-            ((funcall fn axis (cadr val))  (setq r1 0 r2 2 s1 #'+ s2 #'-))
-            ((funcall fn axis (caddr val)) (setq r1 0 r2 1))))
-    (setf (aref im r1 r1) (cosd angle)
-          (aref im r1 r2) (funcall s1 (sind angle))
-          (aref im r2 r1) (funcall s2 (sind angle))
-          (aref im r2 r2) (cosd angle))
-    im))
-
-(defun split-matrix (mat &optional translation-first)
-  "Split the matrix MAT to rotation and translation matrices.
-Return two values: the rotation and translation matrices.  If
-TRANSLATION-FIRST is non-nil return the translation matrix as the
-first value."
-  (let ((rm (copy-array mat))
-        (tm (translation-matrix (aref mat 0 3)
-                                (aref mat 1 3)
-                                (aref mat 2 3))))
-    (setf (aref rm 0 3) 0 (aref rm 1 3) 0 (aref rm 2 3) 0)
-    (if translation-first
-        (values tm rm)
-        (values rm tm))))
-
-(defun matrix-locat (mat)
-  "Make a location from translation components of MAT."
-  (locat (aref mat 0 3) (aref mat 1 3) (aref mat 2 3)))

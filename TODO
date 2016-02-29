@@ -3,8 +3,9 @@
 #+TODO: TODO FIXME | DONE
 
 * DONE Cmake for the bullet wrapper
-* TODO Replace location with vec from sga
+* DONE Replace location with vec from sb-cga
 * TODO Describe the bullet wrapper building in README
+* TODO Use locations as fixnum arrays
 * TODO Physics
   - [ ] physics.lisp sketch
   - [ ] Bullet C wrapper

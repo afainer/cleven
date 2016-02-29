@@ -103,12 +103,12 @@ Is not used at the moment.")
                   tex-tile-size (/ +voxmap-tile-size+ max-tex-size)
                   tiles-coords nil
                   tex-tiles-coords nil)
-            (dobox (loc
-                    (locat)
-                    (locatn (/ (1- max-tex-size) +voxmap-tile-size+)))
-              (let ((l (locat* loc +voxmap-tile-size+)))
-                (push l tiles-coords)
-                (push (locat/ l max-tex-size) tex-tiles-coords)))
+            (dobox (coords
+                    (vec)
+                    (vecn (/ (1- max-tex-size) +voxmap-tile-size+)))
+              (let ((c (vec* coords +voxmap-tile-size+)))
+                (push c tiles-coords)
+                (push (vec/ c max-tex-size) tex-tiles-coords)))
             (setq max-tex-attribs (1- (gl:get* :max-vertex-attribs))
                   tiles-coords (nreverse tiles-coords)
                   tex-tiles-coords (nreverse tex-tiles-coords)))
@@ -133,11 +133,11 @@ Is not used at the moment.")
 (defun tex-tiles-coords-gl ()
   "Generate the list of texture tiles coords in GL shader language."
   (let ((s (apply #'cat
-                  (mapcar #'(lambda (l)
+                  (mapcar #'(lambda (v)
                               (apply #'format
                                      nil
                                      "vec3( ~Ff , ~Ff , ~Ff ),"
-                                     (locat-coords l)))
+                                     (vecxyz v)))
                           (tex-tiles-coords)))))
     (subseq s 0 (1- (length s)))))
 
@@ -181,9 +181,9 @@ Is not used at the moment.")
       (z zval))))
 
 (defun make-slice (&rest coords)
-  "Make slice locations from the flat list of numbers."
+  "Make slice from a flat list of numbers."
   (mapcar #'(lambda (v)
-              (apply #'locat v))
+              (apply #'vec v))
           (group coords 3)))
 
 ;;; TODO The set and fill should be re-entrant.  Generate closures as
@@ -198,38 +198,36 @@ Is not used at the moment.")
   (defun fill-vslice ()
     "Fill the GL buffer with the current vertex slice."
     (dolist (v slice)
-      (with-locat (v)
+      (letvec (((x y z) v))
         (setf (mem-aref ar :float verti) (float x 0f0)
               (mem-aref ar :float (incf verti)) (float y 0f0)
               (mem-aref ar :float (incf verti)) (float z 0f0)))
       (incf verti)
-      (locat+! v dir))))
+      (vec+! v dir))))
 
 (defun make-fill-tslice (slice dir ar texi wob rtileloc)
   "Make a function to fill the GL buffer with texture slices."
   (let* ((rot (wob :irotmat wob))
-         (dir (transform rot (locat/ dir (max-tex-size))))
-         (loc (locat/ (locat- (wob :location wob) rtileloc)
-                      (max-tex-size)))
-         (orig (locat/ (wob :origin wob) (max-tex-size))))
+         (dir (transform-point (vec/ dir (max-tex-size)) rot))
+         (loc (vec/ (vec- (wob :location wob) rtileloc)
+                    (max-tex-size)))
+         (orig (vec/ (wob :origin wob) (max-tex-size))))
     (setq slice (mapcar #'(lambda (v)
-                            (transform rot v))
+                            (transform-point v rot))
                         slice))
     (values
      #'(lambda ()
          (dolist (v slice)
-           (with-locat (v)
+           (letvec (((x y z) v))
              (setf (mem-aref ar :float texi) (float x 0f0)
                    (mem-aref ar :float (incf texi)) (float y 0f0)
                    (mem-aref ar :float (incf texi)) (float z 0f0)))
            (incf texi)
-           (locat+! v dir)))
+           (vec+! v dir)))
      rot
-     (matrix-locat
-      (split-matrix (mat44mul (translation-matrix-loc orig)
-                              rot
-                              (translation-matrix-loc (locat- loc)))
-                    t)))))
+     (translatev (matrix* (translate orig)
+                          rot
+                          (translate (vec* loc -1f0)))))))
 
 (let (woblocs wobnum texidx texnum rotmats emit)
   (defun make-fill-tslices (slice dir ar texis wobs rtileloc)
@@ -263,8 +261,8 @@ matrices.  See `wobs-locations', `wobs-number', `tex-attribs-indexes',
             (push loc woblocs)
             (push (if (wob :emit-light ob) 1 0) emit)
             (incf wobnum)
-            ;; FIXME The rest of wobs may have ROT from ROTMATS.  We
-            ;; should not to ignore them.
+            ;; FIXME The rest of wobs may have ROT from ROTMATS.  Do
+            ;; not ignore them.
             (if (> texnum (max-tex-attribs))
                 (return)))))
       (setq woblocs (nreverse woblocs)
@@ -322,41 +320,37 @@ wob."
               (vslice (case-axis axis xvslice yvslice zvslice))
               (tslice (case-axis axis xtslice ytslice ztslice))
               (dir    (case-axis axis
-                                 `(locat (,sign 1) 0 0)
-                                 `(locat 0 (,sign 1) 0)
-                                 `(locat 0 0 (,sign 1)))))
+                                 `(vec (,sign 1) 0 0)
+                                 `(vec 0 (,sign 1) 0)
+                                 `(vec 0 0 (,sign 1)))))
          `#'(lambda (loc glar verti texis wobs)
-              (with-locat (loc)
-                ;; FIXME Half-texel correction should be peformed in
-                ;; `init-texture-tiles'.
-                ;; TODO Use `with-locats'
-                (with-locat ((locatn (/ .5f0 (max-tex-size))) t1)
-                  (declare (ignorable t1x t1y t1z))
-                  (with-locat ((locatn (- (tex-tile-size)
-                                          (/ .5f0 (max-tex-size))))
-                               t2)
-                    (declare (ignorable t2x t2y t2z))
-                    (let* ((ts +voxmap-tile-size+)
-                           (,axis ,(if (eq sign '-) `(+ ts ,axis) axis))
-                           (at ,(if (eq sign '-)
-                                    (symbolicate 't2 axis)
-                                    (symbolicate 't1 axis)))
-                           (fill-tslices (make-fill-tslices ,tslice
-                                                            ,dir
-                                                            glar
-                                                            texis
-                                                            wobs
-                                                            loc)))
-                      (set-vslice ,vslice ,dir glar verti)
-                      (dotimes (s +voxmap-tile-size+)
-                        (fill-vslice)
-                        (mapc #'funcall fill-tslices))))))))))
+              ;; FIXME Half-texel correction should be peformed in
+              ;; `init-texture-tiles'.
+              (letvec (((x y z) loc)
+                       (t1 (vecn (/ .5f0 (max-tex-size))))
+                       (t2 (vecn (- (tex-tile-size)
+                                    (/ .5f0 (max-tex-size))))))
+                (let* ((ts +voxmap-tile-size+)
+                       (,axis ,(if (eq sign '-) `(+ ts ,axis) axis))
+                       (at ,(if (eq sign '-)
+                                (symbolicate 't2 axis)
+                                (symbolicate 't1 axis)))
+                       (fill-tslices (make-fill-tslices ,tslice
+                                                        ,dir
+                                                        glar
+                                                        texis
+                                                        wobs
+                                                        loc)))
+                  (set-vslice ,vslice ,dir glar verti)
+                  (dotimes (s +voxmap-tile-size+)
+                    (fill-vslice)
+                    (mapc #'funcall fill-tslices))))))))
   (let ((slfn+x (mkslicesfn x +)) (slfn-x (mkslicesfn x -))
         (slfn+y (mkslicesfn y +)) (slfn-y (mkslicesfn y -))
         (slfn+z (mkslicesfn z +)) (slfn-z (mkslicesfn z -)))
     (defun make-slices (loc glar verti texis wobs)
       "Make vertex and texture slices and fill the bound GL buffer."
-      (with-locat ((camera-vector))
+      (letvec (((x y z) (camera-vector)))
         (let ((coords (list
                        (cons (abs x) (if (> x 0) slfn-x slfn+x))
                        (cons (abs y) (if (> y 0) slfn-y slfn+y))
@@ -408,7 +402,7 @@ WOBS is a list of wobs in the tile."
   (make-texture)
   (let ((i -1))
     (dolist (o wobs)
-      (with-locat ((tile-locat (incf i)))
+      (letvec (((x y z) (tile-locat (incf i))))
         (gl:tex-sub-image-3d
          :texture-3d 0
          x y z
@@ -455,10 +449,12 @@ into account different wobs orientations."
                                       (ay '%gl:float n)
                                       (az '%gl:float n))
                  (dolist (r (wobs-rotmats))
-                   (let ((x (transform r (locat d)))
-                         (y (transform r (locat 0 d)))
-                         (z (transform r (locat 0 0 d))))
-                     (with-locats (x y z)
+                   (let ((x (transform-point (vec d)     r))
+                         (y (transform-point (vec 0 d)   r))
+                         (z (transform-point (vec 0 0 d) r)))
+                     (letvec ((x x)
+                              (y y)
+                              (z z))
                        (setf (mem-aref ax '%gl:float (+ i 0)) xx
                              (mem-aref ax '%gl:float (+ i 1)) xy
                              (mem-aref ax '%gl:float (+ i 2)) xz
@@ -477,11 +473,10 @@ into account different wobs orientations."
              (with-foreign-object (ar '%gl:float (* 3 (wobs-number)))
                (let ((i 0))
                  (dolist (l (wobs-locations))
-                   (with-locat (l)
-                     (setf (mem-aref ar '%gl:float (+ i 0)) x
-                           (mem-aref ar '%gl:float (+ i 1)) y
-                           (mem-aref ar '%gl:float (+ i 2)) z)
-                     (incf i 3))))
+                   (setf (mem-aref ar '%gl:float (+ i 0)) (vecx l)
+                         (mem-aref ar '%gl:float (+ i 1)) (vecy l)
+                         (mem-aref ar '%gl:float (+ i 2)) (vecz l))
+                   (incf i 3)))
                (%gl:uniform-3fv woblocs-index (wobs-number) ar)))
 
            (load-texidx ()
@@ -498,7 +493,12 @@ into account different wobs orientations."
                    (setf (mem-aref ar '%gl:int (incf i)) n)))
                (%gl:uniform-1iv emitlight-index (wobs-number) ar))))
 
-      (gl:uniform-matrix camera-index 4 (vector (camera-view)))
+      (let ((view (camera-view)))
+        (with-foreign-object (array '%gl:float (length view))
+          (dotimes (i (length view))
+            (setf (mem-aref array '%gl:float i) (row-major-mref view i)))
+          (%gl:uniform-matrix-4fv camera-index 1 nil array)))
+
       (gl:uniformi texnum-index (tex-attribs-number))
       (load-diffvec)
       (load-woblocs)

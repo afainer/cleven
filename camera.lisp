@@ -27,15 +27,14 @@
 
 (defvar *camera-azimuth* 45)
 
-(defvar *camera-location* (locat)
-  "The location at which the camera looks.")
+(defvar *camera-location* (vec)
+  "The location of the camera.")
 
 (defun camera-matrix ()
   "The transformation matrix of the camera."
-  (mat44mul (rotation-matrix :x (- *camera-tilt*))
-            (rotation-matrix :z *camera-azimuth*)
-            (apply #'translation-matrix
-                   (locat-coords (locat- *camera-location*)))))
+  (matrix* (rotated* (- *camera-tilt*) 0f0 0f0)
+           (rotated* 0f0 0f0 *camera-azimuth*)
+           (translate (vec* *camera-location* -1f0))))
 
 ;;; FIXME Zoom
 (defun camera-frustum-size ()
@@ -46,22 +45,20 @@
 
 (defun make-ortho ()
   "Make the ortho projection matrix."
-  (let ((a (make-array '(4 4)
-                       :initial-element 0.))
-        (s (/ 2 (camera-frustum-size))))
-    (setf (aref a 0 0) s
-          (aref a 1 1) s
-          (aref a 2 2) s
-          (aref a 3 3) 1.)
-    a))
+  (let ((s (float (/ 2 (camera-frustum-size)) 0f0)))
+    (matrix s   0f0 0f0 0f0
+            0f0 s   0f0 0f0
+            0f0 0f0 s   0f0
+            0f0 0f0 0f0 1f0)))
 
 (defun camera-view ()
-  (mat44mul (make-ortho) (camera-matrix)))
+  (matrix* (make-ortho) (camera-matrix)))
 
 (defun camera-vector ()
   "The camera look-at vector without the camera location."
-  (transform (mat44mul (rotation-matrix :z (- *camera-azimuth*))
-                       (rotation-matrix :x *camera-tilt*)) (locat 0 0 -1)))
+  (transform-point (vec 0 0 -1)
+                   (matrix* (rotated* 0f0 0f0 (- *camera-azimuth*))
+                            (rotated* *camera-tilt* 0f0 0f0))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun do-camera-ordering ()
@@ -97,15 +94,15 @@ VARLOC is the current tile location."
                                  #'(lambda ()
                                      (dobox
                                          (,varloc
-                                          (locat- *camera-location* ,size)
-                                          (locat+ *camera-location* ,size)
+                                          (vec- *camera-location* (vecn ,size))
+                                          (vec+ *camera-location* (vecn ,size))
                                           +voxmap-tile-size+
                                           ,o)
                                        ,@body)))
                           ord))))))
        (setq ,size (* (ceiling (sqrt (* ,size ,size)) +voxmap-tile-size+)
                       +voxmap-tile-size+))
-       (with-locat ((camera-vector))
+       (letvec (((x y z) (camera-vector)))
          (let ((order (list (cons (abs x) (if (plusp x) '-x 'x))
                             (cons (abs y) (if (plusp y) '-y 'y))
                             (cons (abs z) (if (plusp z) '-z 'z)))))

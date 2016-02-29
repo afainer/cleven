@@ -23,6 +23,7 @@
   (:use #:common-lisp)
   (:import-from #:alexandria
                 #:ensure-cons
+                #:mappend
                 #:make-keyword
                 #:make-gensym
                 #:with-gensyms
@@ -60,6 +61,20 @@
                 #:file-exists-p
                 #:pathname-as-directory
                 #:pathname-directory-pathname)
+  (:import-from #:sb-cga
+                #:vec+
+                #:vec-
+                #:vec=
+                #:vec-min
+                #:vec-max
+                #:copy-vec
+                #:matrix
+                #:matrix*
+                #:identity-matrix
+                #:mref
+                #:rotate
+                #:translate
+                #:transform-point)
   (:import-from #:sdl2
                 #:*main-thread-channel*)
   (:export

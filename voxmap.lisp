@@ -36,7 +36,7 @@ For simplicity the tile size is constant.")
   "Tile size in bytes.")
 
 (defstruct voxmap
-  (size (locat) :read-only t)
+  (size (vec) :read-only t)
   (tiles nil :read-only t)
   (savefn nil :read-only t)
   (freefn nil :read-only t)
@@ -75,6 +75,7 @@ For simplicity the tile size is constant.")
 
 (defun save-voxels (voxels-file)
   "Save voxels for the voxel file"
+  (declare (ignore voxels-file))
   ;; TODO Implement
   )
 
@@ -100,6 +101,7 @@ should be a voxmap."
 
 (defun save-header (voxmap header voxfile)
   "Save HEADER of VOXMAP."
+  (declare (ignore voxmap header voxfile))
   ;; TODO Implement
   )
 
@@ -116,7 +118,6 @@ here."
             voxels-file))
       voxels-file))
 
-(declaim (optimize (debug 3)))
 (defun load-voxmap (file &optional mmap)
   "Load voxel map from FILE.
 MMAP should have the following values:
@@ -131,7 +132,7 @@ MMAP should have the following values:
   (let ((header (read-file file)))
     (with-voxmap-props (header voxels size)
       (setq voxels (find-voxels file voxels))
-      (iflet* (or (and (numberp mmap) (> mmap (apply #'* (locat-coords size))))
+      (iflet* (or (and (numberp mmap) (> mmap (apply #'* (vecxyz size))))
                   mmap)
           ((mem (mmap-file voxels t) (load-voxels voxels))
            (addr (mmapped-addr mem) mem)
@@ -149,11 +150,16 @@ MMAP should have the following values:
         (if (null-pointer-p addr)
             (error "Could not allocate memory for the voxel map ~A" file)
             (unwind-protect-case ()
-                (let* ((tsize (trunc-locat size +voxmap-tile-size+))
-                       (tiles (make-array (nreverse (locat-coords tsize)))))
-                  (dobox (loc (locat) (locat- tsize 1))
-                    (with-locat (loc)
-                      (setf (aref tiles z y x) addr))
+                (let* ((tsize (trunc-vec (apply #'vec size) +voxmap-tile-size+))
+                       ;; TODO Convert TSIZE to a fixnum array
+                       (tiles (make-array (mapcar #'truncate (nreverse (vecxyz tsize))))))
+                  (dobox (v (vec) (vec- tsize (vecn 1)))
+                    ;; TODO Convert V to a fixnum array
+                    (setf (aref tiles
+                                (truncate (vecz v))
+                                (truncate (vecy v))
+                                (truncate (vecx v)))
+                          addr)
                     (incf-pointer addr +voxmap-tile-bytes+))
                   (make-voxmap :size size
                                :tiles tiles
@@ -176,13 +182,14 @@ Bind variables TILE and TILELOC to the current tile and its location
 in the voxmap; then evaluate forms of BODY."
   (with-gensyms (gloc gvoxmap)
     `(let ((,gvoxmap ,voxmap))
-       (dobox (,gloc (locat)
-                     (locat- (apply #'locat
-                                    (nreverse (array-dimensions
-                                               (voxmap-tiles ,gvoxmap))))
-                             1))
+       (dobox (,gloc (vec)
+                     (vec- (apply #'vec
+                                  (nreverse (array-dimensions
+                                             (voxmap-tiles ,gvoxmap))))
+                           (vecn 1)))
          (let ((tile (apply #'aref
                             (voxmap-tiles ,gvoxmap)
-                            (nreverse (locat-coords ,gloc))))
-               (tileloc (locat* ,gloc +voxmap-tile-size+)))
+                            ;; TODO Convert GLOC to a fixnum array
+                            (mapcar #'truncate (nreverse (vecxyz ,gloc)))))
+               (tileloc (vec* ,gloc +voxmap-tile-size+)))
            ,@body)))))

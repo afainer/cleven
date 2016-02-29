@@ -20,19 +20,19 @@
 ;;; is the object.  The rest of arguments is the operation arguments.
 
 ;;; Put a sprite into the game world at specified location
-(wob :add-to-world *suzanne* (locat 63 64 64))
-(wob :add-to-world *suzanne-red* (locat 63 160 196))
-(wob :add-to-world *suzanne-green* (locat 170 160 196))
-(wob :add-to-world *suzanne-blue* (locat 170 64 64))
+(wob :add-to-world *suzanne* (vec 63 64 64))
+(wob :add-to-world *suzanne-red* (vec 63 160 196))
+(wob :add-to-world *suzanne-green* (vec 170 160 196))
+(wob :add-to-world *suzanne-blue* (vec 170 64 64))
 
 ;;; Remove a sprite from the game world
 ;;; (wob :rm-from-world *suzanne*)
 
 ;;; Move to the absolute location in the game world
-;;; (wob :mv *suzanne* (locat 10 20 30))
+;;; (wob :mv *suzanne* (vec 10 20 30))
 ;;;
 ;;; Move to the location relative to the current one
-;;; (wob :mv *suzanne* (locat 1 2 3) t)
+;;; (wob :mv *suzanne* (vec 1 2 3) t)
 
 ;;; Rotations from each axis.  The rotation angle is in degrees.
 ;;; (wob :rot *suzanne* :x  10)
@@ -41,4 +41,4 @@
 
 (setq *camera-azimuth* 20
       *camera-tilt* 60
-      *camera-location* (locatn 128))
+      *camera-location* (vecn 128))

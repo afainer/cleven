@@ -47,13 +47,13 @@
 
 (defun physics-gravity ()
   "Get physics gravity"
-  (with-foreign-locats (loc)
-    (cfuncall "get_gravity" :pointers (*physics* loc))
-    loc))
+  (with-foreign-vecs (v)
+    (cfuncall "get_gravity" :pointers (*physics* v))
+    v))
 
 (defun (setf physics-gravity) (new)
   "Set physics gravity"
   (cfuncall "set_gravity"
             :pointer *physics*
-            locat new)
+            vec new)
   new)

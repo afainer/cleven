@@ -24,8 +24,8 @@
 (defun sprite-tile-locs (loc)
   "Center at LOC and eight corners of a sprite tile."
   (let ((lst))
-    (dobox (l (locat- loc +voxmap-tile-size+)
-              (locat+ loc +voxmap-tile-size+)
+    (dobox (l (vec- loc (vecn +voxmap-tile-size+))
+              (vec+ loc (vecn +voxmap-tile-size+))
               +voxmap-tile-size+)
       (push l lst))
     lst))
@@ -34,10 +34,10 @@
   "Transform LOC using the sprite location, origin and rotation.
 The sprite location, origin and rotation matrix are SLOC, SORIG,
 SROTMAT respectively."
-  (transform (mat44mul (translation-matrix-loc sloc)
-                       srotmat
-                       (translation-matrix-loc (locat- sorig)))
-             loc))
+  (transform-point loc
+                   (matrix* (translate sloc)
+                            srotmat
+                            (translate (vec* sorig -1f0)))))
 
 (defmacro do-sprite-tiles ((tiles &rest locations) &body body)
   "Evaluate forms of BODY for each tile of TILES.
@@ -52,8 +52,8 @@ to the current tile location and its eight corners."
                     #'(lambda (loc)
                         `(,(symbolicate loc '-locs)
                            (sprite-tile-locs
-                            (sprite-transform (locat+ ,gloc
-                                                      (/ +voxmap-tile-size+ 2))
+                            (sprite-transform (vec+ ,gloc
+                                                    (vecn (/ +voxmap-tile-size+ 2)))
                                               ,loc
                                               origin
                                               rotmat))))
@@ -66,13 +66,14 @@ to the current tile location and its eight corners."
 If DELTA is non-nil, then NEWLOC is added to LOCATION.  ORIGIN, ROTMAT
 and TILES are the sprite origin, rotation matrix and tiles
 respectively."
-  (let ((old (copy-locat location)))
-    (setq location (if delta (locat+ location newloc) newloc))
-    (unless (locat= old location)
+  (let ((old (copy-vec location)))
+    (setq location (if delta (vec+ location newloc) newloc))
+    (unless (vec= old location)
       (do-sprite-tiles (tiles old location)
         (move-wob tile old-locs location-locs)))
     location))
 
+(declaim (optimize (debug 3)))
 (defun make-sprite (name voxmap-file)
   "Make a sprite named NAME and load VOXMAP-FILE for its voxels.
 For each tile in the sprite voxmap a wob is created.  Return the last
@@ -102,8 +103,8 @@ is a location.
 :EMIT-LIGHT -- returns non-nil is the sprite simulate light emission."
   (let* ((voxmap (load-voxmap voxmap-file)) ; TODO Use mmap for big sprites
          (finalizer #'(lambda () (free-voxmap voxmap nil)))
-         (location (locat))
-         (origin (locat/ (voxmap-size voxmap) 2))
+         (location (vec))
+         (origin (vec/ (apply #'vec (voxmap-size voxmap)) 2))
          (rotmat (identity-matrix))
          (irotmat (identity-matrix))    ;inverted rotation
          (tiles)
@@ -112,13 +113,15 @@ is a location.
                        (sprite-move loc delta location
                                     origin rotmat tiles))))
          (rot #'(lambda (axis angle &optional delta)
+                  (declare (ignore delta)) ;FIXME Use DELTA
                   ;; FIXME Make a new rotation matrix if DELTA is nil.
-                  (setq rotmat
-                        (mat44mul (rotation-matrix axis angle)
-                                  rotmat)
-                        irotmat
-                        (mat44mul irotmat
-                                  (rotation-matrix axis (- angle)))))))
+                  (let ((a (deg2rad angle))
+                        (v))
+                    (cond ((or (eq axis :x) (= axis 0)) (setq v (vec a 0 0)))
+                          ((or (eq axis :y) (= axis 1)) (setq v (vec 0 a 0)))
+                          ((or (eq axis :z) (= axis 2)) (setq v (vec 0 0 a))))
+                    (setq rotmat (matrix* (rotated v) rotmat)
+                          irotmat (matrix* irotmat (rotated (vec* v -1f0))))))))
     (dovoxmap voxmap
       (push (cons
              (make-wob
@@ -130,7 +133,7 @@ is a location.
                             location)
               :irotmat #'(lambda () irotmat)
               :irotmat= #'(lambda (irm) (eq irotmat irm))
-              :origin #'(lambda () (locat- origin tileloc))
+              :origin #'(lambda () (vec- origin tileloc))
               :move mv
               :rotate rot
               :mv mv

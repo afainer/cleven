@@ -26,9 +26,9 @@
    (cons 'scalar
          #'(lambda (val)
              `(:float (float ,val 0f0))))
-   (cons 'locat
+   (cons 'vec
          #'(lambda (val)
-             `(scalars ((locatx ,val) (locaty ,val) (locatz ,val))))))
+             `(scalars ((vecx ,val) (vecy ,val) (vecz ,val))))))
   "Expander functions used by `expand-foreign-type'.")
 
 ;;; Plural types may be ordinary expanders in *foreign-types-expanders*
@@ -42,7 +42,7 @@
                          (remove :void cffi:*other-builtin-types*)))
          (mapcar #'(lambda (type)
                      (cons (symbolicate type 's) type))
-                 (list 'scalar 'locat))))
+                 (list 'scalar 'vec))))
 "Set of foreign types and their plural names, e.g.
  ((:int . :ints) (:float . :floats) ...)."
 
@@ -165,11 +165,11 @@ where bindings is a list similar to bindings for `let' special form.
 
 For example:
 
-  (with-foreign-locats (loc)
+  (with-foreign-vecs (vec)
     (cfuncall \"get_gravity\" :pointers (*physics* loc))
     loc)
 
-This macro call creates a new location LOC which is used as a pointer
+This macro call creates a new vector VEC which is used as a pointer
 to the foreign function `get_gravity'.
 
 Note that actual name of defined macro is NAME which is created by the
@@ -187,11 +187,11 @@ where expanders is a list of type expanders for `expand-foreign-type'.
   - Generates macrolets that rebinds cfuncall all macros in
     `*with-foreign-names*'.
   - Generates accessors for bound variables, so expressions like this
-    work correctly: (list loc (setf loc (locat 1 2 3)))
+    work correctly: (list v (setf v (vec 1 2 3)))
 
 Each macro rebound by `macrolet' special form is a wrapper which
 generates new type expanders end expands to corresponding macro,
-e.g. with-foreign-locats to %with-foreign-locats.  The new expanders
+e.g. with-foreign-vecs to %with-foreign-vecs.  The new expanders
 translate each `cfuncall' :pointer argument from symbols in the
 bindings to the foreign objects.
 
@@ -235,18 +235,16 @@ definition."
                                    ,@body))))))))
 
 (macrolet
-    ((define-types (&rest type-mktype-name)
+    ((define-types (&rest type-mktype)
        (let (names types mktypes)
          (mapc
-          #'(lambda (tmn)
-              (destructuring-bind (type mktype &optional name) tmn
-                (let* ((name (if name
-                                 name
-                                 (symbolicate 'with-foreign- type 's))))
+          #'(lambda (tm)
+              (destructuring-bind (type mktype) tm
+                (let* ((name (symbolicate 'with-foreign- type 's)))
                   (push (list name (symbolicate '% name)) names)
                   (push type types)
                   (push mktype mktypes))))
-          type-mktype-name)
+          type-mktype)
          `(progn
             (setq *with-foreign-names*
                   (list ,@(mapcar #'(lambda (n)
@@ -259,5 +257,5 @@ definition."
                        types
                        mktypes))))))
   (define-types
-      (scalar nil with-scalars)
-      (locat locat)))
+      (scalar nil)
+      (vec vec)))

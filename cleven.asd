@@ -26,12 +26,12 @@
   :author "Andrey Fainer <fandrey@gmx.com>"
   :licence "MIT"
   :serial t
-  :depends-on (:alexandria :cl-fad :sdl2)
+  :depends-on (:alexandria :cl-fad :sb-cga :sdl2)
   :components ((:file "package")
                (:file "utils")
                (:file "thread")
                (:file "mmap")
-               (:file "location")
+               (:file "cga")
                (:file "voxmap")
                (:file "game")
                (:file "sprite")

@@ -1,9 +1,10 @@
 cmake_minimum_required( VERSION 2.8 )
-set( BUILD_SHARED_LIBS true )
+# set( BUILD_SHARED_LIBS true )
 
 find_package( Bullet REQUIRED )
 if( BULLET_FOUND )
   include_directories( ${BULLET_INCLUDE_DIRS} )
 endif()
 
-add_library( bullet bullet.cpp )
+add_library( bullet SHARED bullet.cpp )
+target_link_libraries( bullet ${BULLET_LIBRARIES} )
