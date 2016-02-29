@@ -41,6 +41,9 @@ At present the following has been implemented:
    is performed only for the geometry of the polygonal model.  No textures or
    colors of vertexes/polygons are used.
 
+Also, added a minimal Bullet Physics wrapper.  Currently, it does
+nothing but initializes the physics system.
+
 Cleven was tested on SBCL and GNU/Linux.  Memory mapped voxel maps on
 Windows are not supported, but this support is planned.
 
@@ -54,16 +57,35 @@ Other issues and limitations are:
 Build and run
 -------------
 
-Install [SDL 2.0](http://www.libsdl.org/),
-[SBCL](http://www.sbcl.org/) and
+Install [SDL 2.0](http://www.libsdl.org/), [Bullet
+Physics](http://bulletphysics.org/), [SBCL](http://www.sbcl.org/) and
 [Quicklisp](http://www.quicklisp.org/).
 
+Build Bullet Physics wrapper on GNU/Linux.
+
+```
+cd /path/to/cleven
+cmake .
+make
+```
+
+If you installed Bullet Physics to non-standard path use the following
+command.
+
+```
+cmake -D BULLET_ROOT=/path/to/bullet/root .
+```
+
+To build Bullet Physics wrapper on other systems, please consult your
+development environment documentation.
+
 Run SBCL and install Common Lisp bindings for SDL 2.0 using Quicklisp.
-Also, install _cl-fad_.
+Also, install _cl-fad_ and _sb-cga_.
 
 ```Lisp
 (ql:quickload "sdl2")
 (ql:quickload "cl-fad")
+(ql:quickload "sb-cga")
 ```
 
 Load the Cleven system.
@@ -96,8 +118,8 @@ Make the game world and add some sprites.
 (make-global-world 256 256 256)
 (defparameter *sprite* (make-sprite :sprite "/path/to/sprite"))
 (defparameter *sprite2* (make-sprite :sprite2 "/path/to/sprite2"))
-(wob :add-to-world *sprite* (locat 100 110 120))
-(wob :add-to-world *sprite2* (locat 90 80 70))
+(wob :add-to-world *sprite* (vec 100 110 120))
+(wob :add-to-world *sprite2* (vec 90 80 70))
 ```
 
 See _suzanne.lisp_ in the example directory.
