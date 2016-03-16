@@ -30,56 +30,64 @@
       (push l lst))
     lst))
 
-(defun sprite-transform (loc sloc sorig srotmat)
-  "Transform LOC using the sprite location, origin and rotation.
-The sprite location, origin and rotation matrix are SLOC, SORIG,
-SROTMAT respectively."
-  (transform-point loc
-                   (matrix* (translate sloc)
-                            srotmat
-                            (translate (vec* sorig -1f0)))))
+(macrolet ((defsprite-data (&rest vars)
+             `(progn
+                (defun sprite-data ,vars
+                  (list ,@vars))
+                (defmacro with-sprite-data (sd &body body)
+                  `(destructuring-bind ,',vars ,sd
+                     (declare (ignorable ,@',vars))
+                     ,@body)))))
+  (defsprite-data location origin rotmat tiles))
 
-(defmacro do-sprite-tiles ((tiles &rest locations) &body body)
-  "Evaluate forms of BODY for each tile of TILES.
-LOCATIONS is list of variable names which are bound to the sprite
-locations.  For each name create variable <NAME>-locs which is bound
-to the current tile location and its eight corners."
-  (with-gensyms (gtiles gtile gloc)
-    `(let ((,gtiles ,tiles))
-       (dolist (,gtile ,gtiles)
-         (destructuring-bind (tile . ,gloc) ,gtile
-           (let (,@(mapcar
-                    #'(lambda (loc)
-                        `(,(symbolicate loc '-locs)
-                           (sprite-tile-locs
-                            (sprite-transform (vec+ ,gloc
-                                                    (vecn (/ +voxmap-tile-size+ 2)))
-                                              ,loc
-                                              origin
-                                              rotmat))))
-                    locations))
-             ,@body))))))
+(defun transform-sprite-point (loc data)
+  "Transform LOC using sprite DATA (location, origin, rotation)."
+  (with-sprite-data data
+    (transform-point loc
+                     (matrix* (translate location)
+                              rotmat
+                              (translate (vec* origin -1f0))))))
 
-;;; FIXME Too many arguments
-(defun sprite-move (newloc delta location origin rotmat tiles)
-  "Move sprite from LOCATION to NEWLOC.
-If DELTA is non-nil, then NEWLOC is added to LOCATION.  ORIGIN, ROTMAT
-and TILES are the sprite origin, rotation matrix and tiles
-respectively."
-  (let ((old (copy-vec location)))
-    (setq location (if delta (vec+ location newloc) newloc))
-    (unless (vec= old location)
-      (do-sprite-tiles (tiles old location)
-        (move-wob tile old-locs location-locs)))
-    location))
+(defmacro do-sprite-tiles (sprite-data &body body)
+  "Evaluate forms of BODY for each tile using SPRITE-DATA."
+  (with-gensyms (gdata gtile gloc)
+    `(let ((,gdata ,sprite-data))
+       (with-sprite-data ,gdata
+         (dolist (,gtile tiles)
+           (destructuring-bind (tile . ,gloc) ,gtile
+             (declare (ignorable tile))
+             (let ((tile-locs
+                    (mapcar #'(lambda (l)
+                                (transform-sprite-point l ,gdata))
+                            (sprite-tile-locs
+                             (vec+ ,gloc
+                                   (vecn (/ +voxmap-tile-size+ 2)))))))
+               (declare (ignorable tile-locs))
+               ,@body)))))))
 
-(declaim (optimize (debug 3)))
+(defun transform-sprite (data rotation translation)
+  "Transform sprite in `*world' with ROTATION and TRANSLATION."
+  (with-sprite-data data
+    (let ((old-locs)
+          (new-locs)
+          (newdata (with-sprite-data data
+                     (sprite-data translation origin rotation tiles))))
+      (do-sprite-tiles data
+        (push tile-locs old-locs))
+      (do-sprite-tiles newdata
+        (push tile-locs new-locs))
+      (mapc #'(lambda (tl ol nl)
+                (move-wob (car tl) ol nl))
+            tiles old-locs new-locs))))
+
 (defun make-sprite (name voxmap-file)
   "Make a sprite named NAME and load VOXMAP-FILE for its voxels.
 For each tile in the sprite voxmap a wob is created.  Return the last
 wob.  The sprite wob has the following operations.
 
 :VOXELS -- voxels of the tile for which the wob is created.
+
+:SIZE -- size of the sprite voxmap.
 
 :LOCATION -- the current location of the sprite.
 
@@ -95,6 +103,9 @@ location and optional delta, non-nil value of which specify: new-loc
 :ROTATE, :ROT -- rotate the sprite around the sprite origin; arguments
 are the rotation axis and an angle in degrees.
 
+:TRANSFORM -- transform the sprite in the `*world*'; arguments are a
+translation vec and a rotation matrix.
+
 :ADD-TO-WORLD -- put the sprite to `*world*'; the operation argument
 is a location.
 
@@ -107,48 +118,62 @@ is a location.
          (origin (vec/ (apply #'vec (voxmap-size voxmap)) 2))
          (rotmat (identity-matrix))
          (irotmat (identity-matrix))    ;inverted rotation
-         (tiles)
-         (mv #'(lambda (loc &optional delta)
-                 (setq location
-                       (sprite-move loc delta location
-                                    origin rotmat tiles))))
-         (rot #'(lambda (axis angle &optional delta)
-                  (declare (ignore delta)) ;FIXME Use DELTA
-                  ;; FIXME Make a new rotation matrix if DELTA is nil.
-                  (let ((a (deg2rad angle))
-                        (v))
-                    (cond ((or (eq axis :x) (= axis 0)) (setq v (vec a 0 0)))
-                          ((or (eq axis :y) (= axis 1)) (setq v (vec 0 a 0)))
-                          ((or (eq axis :z) (= axis 2)) (setq v (vec 0 0 a))))
-                    (setq rotmat (matrix* (rotated v) rotmat)
-                          irotmat (matrix* irotmat (rotated (vec* v -1f0))))))))
-    (dovoxmap voxmap
-      (push (cons
-             (make-wob
-              name
-              ;; FIXME Voxels, location, (i)rotmat, origin should be
-              ;; accessed with held lock
-              :voxels #'(lambda () tile)
-              :location #'(lambda ()
-                            location)
-              :irotmat #'(lambda () irotmat)
-              :irotmat= #'(lambda (irm) (eq irotmat irm))
-              :origin #'(lambda () (vec- origin tileloc))
-              :move mv
-              :rotate rot
-              :mv mv
-              :rot rot
-              :add-to-world #'(lambda (loc)
-                                (setq location loc)
-                                (do-sprite-tiles (tiles location)
-                                  (dolist (loc location-locs)
-                                    (add-to-world tile loc))))
-              :rm-from-world #'(lambda ()
-                                 (do-sprite-tiles (tiles location)
-                                   (dolist (loc location-locs)
-                                     (remove-from-world tile loc))))
-              :emit-light #'(lambda () (voxmap-prop voxmap 'emit-light)))
-             tileloc)
-            tiles))
+         (tiles))
+    (flet ((sprite-data ()
+             (sprite-data location origin rotmat tiles)))
+      (declare (inline sprite-data))
+      (let ((mv #'(lambda (loc &optional delta)
+                    (let ((newloc (if delta (vec+ location loc) loc)))
+                      (transform-sprite (sprite-data) rotmat newloc)
+                      (setq location newloc))))
+            (rot #'(lambda (axis angle &optional delta)
+                     (let ((v (cond ((or (eq axis :x) (= axis 0))
+                                     (vec angle 0 0))
+                                    ((or (eq axis :y) (= axis 1))
+                                     (vec 0 angle 0))
+                                    ((or (eq axis :z) (= axis 2))
+                                     (vec 0 0 angle)))))
+                       (iflet delta
+                           ((newrot (matrix* (rotated v) rotmat)
+                                    (rotated v))
+                            (newirot (matrix* (rotated (vec* v -1f0)) irotmat)
+                                     (rotated (vec* v -1f0))))
+                         (transform-sprite (sprite-data) newrot location)
+                         (setq rotmat newrot
+                               irotmat newirot))))))
+        (dovoxmap voxmap
+          (push (cons
+                 (make-wob
+                  name
+                  ;; FIXME Voxels, location, (i)rotmat, origin should be
+                  ;; accessed with held lock
+                  :voxels #'(lambda () tile)
+                  :size #'(lambda () (voxmap-size voxmap))
+                  :location #'(lambda ()
+                                location)
+                  :irotmat #'(lambda () irotmat)
+                  :irotmat= #'(lambda (irm) (eq irotmat irm))
+                  :origin #'(lambda () (vec- origin tileloc))
+                  :move mv
+                  :rotate rot
+                  :mv mv
+                  :rot rot
+                  :transform #'(lambda (rotation translation irotation)
+                                 (transform-sprite (sprite-data) rotation translation)
+                                 (setq rotmat rotation
+                                       irotmat irotation
+                                       location translation))
+                  :add-to-world #'(lambda (loc)
+                                    (setq location loc)
+                                    (do-sprite-tiles (sprite-data)
+                                      (dolist (loc tile-locs)
+                                        (add-to-world tile loc))))
+                  :rm-from-world #'(lambda ()
+                                     (do-sprite-tiles (sprite-data)
+                                       (dolist (loc tile-locs)
+                                         (remove-from-world tile loc))))
+                  :emit-light #'(lambda () (voxmap-prop voxmap 'emit-light)))
+                 tileloc)
+                tiles))))
     (trivial-garbage:finalize tiles finalizer)
     (caar tiles)))

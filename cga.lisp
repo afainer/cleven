@@ -173,3 +173,14 @@ Consider MATRIX as a vector by viewing its elements in row-major
 order.  The row-major order element INDEX is the element referred to
 by INDEX."
   (aref matrix index))
+
+(defun matrix3 (m11 m12 m13
+                m21 m22 m23
+                m31 m32 m33)
+  "Make a matrix specifying its 3x3 submatrix.
+Other elements but the last have zero value.  The last 4x4 element
+value is 1."
+  (matrix m11 m12 m13 0f0
+          m21 m22 m23 0f0
+          m31 m32 m33 0f0
+          0f0 0f0 0f0 1f0))

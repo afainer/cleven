@@ -127,9 +127,9 @@ extern "C"
     phys->world.removeRigidBody( &body->body );
   }
 
-  rigid_body * make_body( btScalar hextent_x,
-                          btScalar hextent_y,
-                          btScalar hextent_z,
+  rigid_body * make_body( btScalar extent_x,
+                          btScalar extent_y,
+                          btScalar extent_z,
                           btScalar trans_xx,
                           btScalar trans_xy,
                           btScalar trans_xz,
@@ -145,9 +145,9 @@ extern "C"
                           btScalar mass )
   {
     // TODO Reuse box shapes with same half extents
-    return new rigid_body( btVector3( hextent_x,
-                                      hextent_y,
-                                      hextent_z ),
+    return new rigid_body( btVector3( extent_x / btScalar( 2. ),
+                                      extent_y / btScalar( 2. ),
+                                      extent_z / btScalar( 2. ) ),
                            btTransform( btMatrix3x3 ( trans_xx,
                                                       trans_xy,
                                                       trans_xz,
@@ -165,7 +165,9 @@ extern "C"
 
   void delete_body( physics * phys, rigid_body * body )
   {
-    remove_body_from_physics( phys, body );
+    if( phys )
+      remove_body_from_physics( phys, body );
+
     delete body;
   }
 
@@ -206,4 +208,33 @@ extern "C"
   DEF_GET_TRANSFORM( itransform, transform.inverse() );
 
 #undef DEF_GET_TRANSFORM
+
+void set_body_transform( rigid_body * body,
+                         btScalar     trans_xx,
+                         btScalar     trans_xy,
+                         btScalar     trans_xz,
+                         btScalar     trans_yx,
+                         btScalar     trans_yy,
+                         btScalar     trans_yz,
+                         btScalar     trans_zx,
+                         btScalar     trans_zy,
+                         btScalar     trans_zz,
+                         btScalar     trans_x,
+                         btScalar     trans_y,
+                         btScalar     trans_z )
+{
+  body->mstate.transform = btTransform( btMatrix3x3 ( trans_xx,
+                                                      trans_xy,
+                                                      trans_xz,
+                                                      trans_yx,
+                                                      trans_yy,
+                                                      trans_yz,
+                                                      trans_zx,
+                                                      trans_zy,
+                                                      trans_zz ),
+                                        btVector3( trans_x,
+                                                   trans_y,
+                                                   trans_z ) );
+}
+
 }

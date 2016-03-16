@@ -28,7 +28,13 @@
              `(:float (float ,val 0f0))))
    (cons 'vec
          #'(lambda (val)
-             `(scalars ((vecx ,val) (vecy ,val) (vecz ,val))))))
+             `(scalars ((vecx ,val) (vecy ,val) (vecz ,val)))))
+   ;; The upper left 3x3 submatrix
+   (cons 'mat3
+         #'(lambda (val)
+             `(scalars ((mref ,val 0 0) (mref ,val 0 1) (mref ,val 0 2)
+                        (mref ,val 1 0) (mref ,val 1 1) (mref ,val 1 2)
+                        (mref ,val 2 0) (mref ,val 2 1) (mref ,val 2 2))))))
   "Expander functions used by `expand-foreign-type'.")
 
 ;;; Plural types may be ordinary expanders in *foreign-types-expanders*
@@ -92,7 +98,7 @@ The macro is a wrapper around `foreign-funcall' that expands ARGS
 using `expand-foreign-type'."
   `(%cfuncall ,name-and-options ,*foreign-types-expanders* ,@args))
 
-(defun make-macrobindings (vars)
+(defun make-macrobindings (expanders vars)
   "Make macrolet for each macro name in `*with-foreign-names*'."
   (flet ((cons-expander (vars)
            `(cons
@@ -106,7 +112,7 @@ using `expand-foreign-type'."
                                    ,(if (cdr g)
                                         `'(:pointers ,g)
                                         `'(:pointer ,(car g))))))))
-             *foreign-types-expanders*)))
+             ',expanders)))
     `((cfuncall (name-and-options &rest args)
                 `(%cfuncall ,name-and-options
                             ,,(cons-expander vars)
@@ -227,7 +233,7 @@ definition."
                                    (cdr v)
                                    ftypes))
                        vars)
-            (macrolet ,(make-macrobindings vars)
+            (macrolet ,(make-macrobindings expanders vars)
               ,(make-accessors expanders ',type vars ',make-type
                                `(,@(loop
                                       for b in bindings
@@ -258,4 +264,5 @@ definition."
                        mktypes))))))
   (define-types
       (scalar nil)
-      (vec vec)))
+      (vec vec)
+      (mat3 matrix3)))

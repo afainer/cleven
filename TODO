@@ -6,21 +6,20 @@
 * DONE Replace location with vec from sb-cga
 * DONE Describe the bullet wrapper building in README
 * TODO Use locations as fixnum arrays
-* TODO Physics
-  - [ ] physics.lisp sketch
-  - [ ] Bullet C wrapper
+* DONE Physics
+  - [X] physics.lisp sketch
+  - [X] Bullet C wrapper
 * TODO Too short variables names for wobs, texture tiles and texture attribs.
   In fragment.glsl and render.lisp.
 * TODO When signaling an error use appropriate conditions, not simple-error
 * TODO Pass sun and ambient light to shaders via uniforms
-* FIXME The camera viewable area
+* FIXME The camera viewable area and moving objects in the game world
   Try this:
-  (defparameter *sprite* (make-sprite 'sprite "~/doc/hovertank/hull"))
-  (gobj :mv *sprite* (locat 64 64 32))
-  (gobj :rot *sprite* 'z -10)
-  (setq *camera-azimuth* 0)
-  (setq *camera-tilt* 0)
-  (setq *camera-location* (locat 64 63))
+  (defparameter *suzanne* (make-sprite :suzanne "examples/suzanne-white"))
+  (wob :add-to-world *suzanne* (vec 64 64 30))
+  (wob :rm-from-world *suzanne*)
+  (wob :mv *suzanne* (vec 64 64 30))      ;Top of *suzanne* is not rendered
+  (setq *camera-location* (vec 0 0 10))   ;Moving camera fixes this
 
 * TODO Experiment with CA voxel format and its transfer function
   CA format consists of two 1-byte components: Color and Alpha.  Color
