@@ -68,17 +68,14 @@
 (defun transform-sprite (data rotation translation)
   "Transform sprite in `*world' with ROTATION and TRANSLATION."
   (with-sprite-data data
-    (let ((old-locs)
-          (new-locs)
-          (newdata (with-sprite-data data
+    (let ((newdata (with-sprite-data data
                      (sprite-data translation origin rotation tiles))))
       (do-sprite-tiles data
-        (push tile-locs old-locs))
+        (dolist (loc tile-locs)
+          (remove-from-world tile loc)))
       (do-sprite-tiles newdata
-        (push tile-locs new-locs))
-      (mapc #'(lambda (tl ol nl)
-                (move-wob (car tl) ol nl))
-            tiles old-locs new-locs))))
+        (dolist (loc tile-locs)
+          (add-to-world tile loc))))))
 
 (defun make-sprite (name voxmap-file)
   "Make a sprite named NAME and load VOXMAP-FILE for its voxels.
@@ -172,7 +169,8 @@ is a location.
                                      (do-sprite-tiles (sprite-data)
                                        (dolist (loc tile-locs)
                                          (remove-from-world tile loc))))
-                  :emit-light #'(lambda () (voxmap-prop voxmap 'emit-light)))
+                  :emit-light #'(lambda () (voxmap-prop voxmap 'emit-light))
+                  :print #'(lambda (stream) (format stream "Tileloc: ~A" tileloc)))
                  tileloc)
                 tiles))))
     (trivial-garbage:finalize tiles finalizer)

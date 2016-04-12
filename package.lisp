@@ -107,13 +107,17 @@
    #:lock
    #:lock*
    #:with-lock
-   ;; Location
-   #:locat
-   #:locatn
-   #:locat+
-   #:locat-
-   #:locat*
-   #:locat/
+   ;; CGA
+   #:vec
+   #:vecn
+   #:vecx
+   #:vecy
+   #:vecz
+   #:vecxyz
+   #:vec+
+   #:vec-
+   #:vec*
+   #:vec/
    ;; Game
    #:*event-loop-functions*
    #:*event-loop-functions-lock*

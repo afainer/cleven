@@ -155,7 +155,8 @@ particular operation of an world object use the function `wob'."
 
 (defmethod print-object ((ob wob) stream)
   (print-unreadable-object (ob stream :type t)
-    (format stream "~A" (wob :name ob))))
+    (format stream "~A, " (wob :name ob))
+    (wob :print ob stream)))
 
 ;;; FIXME Use *world-lock*
 (defvar *world* nil
@@ -190,9 +191,8 @@ tile."
   (with-world-tile (tile loc)
     (copy-list (cdr tile))))
 
-;;; `add-to-world', `remove-from-world' and possibly `move-wob' can be
-;;; generalized into one function, e.g. (get-wob wob loc1 loc2...),
-;;; (setf (get-wob...
+;;; `add-to-world' and `remove-from-world' can be generalized into one
+;;; function, e.g. (get-wob wob loc1 loc2...), (setf (get-wob...
 
 (defun add-to-world (wob loc)
   "Add WOB to world at LOC.
@@ -205,14 +205,6 @@ LOC is specified in voxels."
 LOC is specified in voxels."
   (with-world-tile (tile loc)
     (setf (cdr tile) (delete wob (cdr tile)))))
-
-(defun move-wob (wob old new)
-  "Move WOB from the location OLD to the location NEW.
-OLD and NEW are specified in voxels."
-  (dolist (l old)
-    (remove-from-world wob l))
-  (dolist (l new)
-    (add-to-world wob l)))
 
 (defun make-world (sizex sizey sizez)
   "Make the world array with size (SIZEX SIZEY SIZEZ).

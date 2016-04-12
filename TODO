@@ -2,17 +2,6 @@
 
 #+TODO: TODO FIXME | DONE
 
-* DONE Cmake for the bullet wrapper
-* DONE Replace location with vec from sb-cga
-* DONE Describe the bullet wrapper building in README
-* TODO Use locations as fixnum arrays
-* DONE Physics
-  - [X] physics.lisp sketch
-  - [X] Bullet C wrapper
-* TODO Too short variables names for wobs, texture tiles and texture attribs.
-  In fragment.glsl and render.lisp.
-* TODO When signaling an error use appropriate conditions, not simple-error
-* TODO Pass sun and ambient light to shaders via uniforms
 * FIXME The camera viewable area and moving objects in the game world
   Try this:
   (defparameter *suzanne* (make-sprite :suzanne "examples/suzanne-white"))
@@ -21,12 +10,17 @@
   (wob :mv *suzanne* (vec 64 64 30))      ;Top of *suzanne* is not rendered
   (setq *camera-location* (vec 0 0 10))   ;Moving camera fixes this
 
+* TODO Volumetric collision detection
+* TODO Multibody physics objects with constraints
+* TODO Use locations as fixnum arrays
+* TODO Too short variables names for wobs, texture tiles and texture attribs.
+  In fragment.glsl and render.lisp.
+* TODO When signaling an error use appropriate conditions, not simple-error
+* TODO Pass sun and ambient light to shaders via uniforms
 * TODO Experiment with CA voxel format and its transfer function
   CA format consists of two 1-byte components: Color and Alpha.  Color
   value is used to lookup RGB value of a voxel via the transfer
   function.  This format will reduce voxmaps sizes.
-
-* TODO Volumetric collision detection
 * TODO Scripting language
 * FIXME The camera near plan at big zoom
 * TODO io_voxels: multithreaded rasterization
