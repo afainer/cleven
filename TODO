@@ -2,7 +2,7 @@
 
 #+TODO: TODO FIXME | DONE
 
-* FIXME The camera viewable area and moving objects in the game world
+* DONE The camera viewable area and moving objects in the game world
   Try this:
   (defparameter *suzanne* (make-sprite :suzanne "examples/suzanne-white"))
   (wob :add-to-world *suzanne* (vec 64 64 30))

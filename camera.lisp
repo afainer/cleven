@@ -84,7 +84,7 @@
 VARLOC is the current tile location."
   ;; At the moment approximate viewable area with cube which size is
   ;; equal to diagonal of camera frustum.
-  (let ((size (gensym)))
+  (with-gensyms (gloc size)
     `(let* ((,size (/ (camera-frustum-size) 2))
             (orders
              (list
@@ -92,13 +92,20 @@ VARLOC is the current tile location."
                   (dolist (o (do-camera-ordering) ord)
                     (push `(cons ',o
                                  #'(lambda ()
-                                     (dobox
-                                         (,varloc
-                                          (vec- *camera-location* (vecn ,size))
-                                          (vec+ *camera-location* (vecn ,size))
-                                          +voxmap-tile-size+
-                                          ,o)
-                                       ,@body)))
+                                     (let ((*camera-azimuth* *camera-azimuth*)
+                                           (*camera-tilt* *camera-tilt*)
+                                           (*camera-location* *camera-location*)
+                                           (,gloc
+                                            (vec* (trunc-vec *camera-location*
+                                                             +voxmap-tile-size+)
+                                                  +voxmap-tile-size+)))
+                                       (dobox
+                                           (,varloc
+                                            (vec- ,gloc (vecn ,size))
+                                            (vec+ ,gloc (vecn ,size))
+                                            +voxmap-tile-size+
+                                            ,o)
+                                         ,@body))))
                           ord))))))
        (setq ,size (* (ceiling (sqrt (* ,size ,size)) +voxmap-tile-size+)
                       +voxmap-tile-size+))
