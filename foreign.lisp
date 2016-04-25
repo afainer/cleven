@@ -48,9 +48,9 @@
                          (remove :void cffi:*other-builtin-types*)))
          (mapcar #'(lambda (type)
                      (cons (symbolicate type 's) type))
-                 (list 'scalar 'vec))))
-"Set of foreign types and their plural names, e.g.
- ((:int . :ints) (:float . :floats) ...)."
+                 (list 'scalar 'vec 'mat3)))
+  "Set of foreign types and their plural names, e.g.
+ ((:int . :ints) (:float . :floats) ...).")
 
 (defvar *with-foreign-names* nil
   "Names of with-foreign-* macros defined by `define-with-foreign'.
