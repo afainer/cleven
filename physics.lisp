@@ -73,7 +73,7 @@
   (cfuncall "remove_body_from_physics"
             :pointers (*physics* body)))
 
-(defun make-body (size rotation translation mass)
+(defun make-body (size rotation translation mass tiles)
   "Make body with box SIZE and MASS.
 The initial world transform is ROTATION and TRANSLATION."
   (cfuncall "make_body"
@@ -81,6 +81,7 @@ The initial world transform is ROTATION and TRANSLATION."
             mat3 rotation
             vec translation
             scalar mass
+            :pointer tiles
             :pointer))
 
 (defun delete-body (body)
@@ -130,7 +131,8 @@ Return two values: rotation and translation."
                                 (make-body (apply #'vec (wob :size sprite))
                                            rotation
                                            translation
-                                           mass))
+                                           mass
+                                           (voxmap-tiles (wob :voxmap sprite))))
                           (add-body-to-physics bodyptr))))
         (rmbodyfn '#'(lambda ()
                        (when bodyptr
@@ -176,7 +178,7 @@ A physics object is a WOB with the following operations:
 :ADD-TO-WORLD -- add the object to `*world*';  arguments are a
 location and optional rotation.
 
-:RM-FROM-WORLD -- remove the object from `*world'.
+:RM-FROM-WORLD -- remove the object from `*world*'.
 
 :UPDATE -- update transform of the object's sprites; the operation is
 used in `do-physics-simulation'.
@@ -225,6 +227,12 @@ ROTATION -- the initial rotation of the body."
                 :update #'(lambda ()
                             (dolist (b ,bodies)
                               (,updatebody b)))))))))
+
+(defun body (name &key sprite mass translation rotation)
+  "This function is defined just for Slime-Autodoc mode.
+See `make-pob'."
+  (declare (ignore name sprite mass translation rotation))
+  (error "A rigid body must be defined in the forms of `make-pob' macro."))
 
 ;;; For simplicity the physics simulation is performed in the render thread.
 (let (time)

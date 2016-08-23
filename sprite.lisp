@@ -145,6 +145,7 @@ is a location.
                   ;; FIXME Voxels, location, (i)rotmat, origin should be
                   ;; accessed with held lock
                   :voxels #'(lambda () tile)
+                  :voxmap #'(lambda () voxmap)
                   :size #'(lambda () (voxmap-size voxmap))
                   :location #'(lambda ()
                                 location)
