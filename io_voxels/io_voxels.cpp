@@ -1,6 +1,6 @@
 // -*- mode: c++; coding: utf-8 -*-
 //
-// Copyright (c) 2015, Andrey Fainer <fandrey@gmx.com>
+// Copyright (c) 2015-2016, Andrey Fainer <fandrey@gmx.com>
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
