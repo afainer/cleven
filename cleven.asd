@@ -19,14 +19,14 @@
 ;;; TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;; SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(in-package #:asdf)
+(in-package #:asdf-user)
 
 (defsystem :cleven
   :description "Cleven - Common Lisp Experimental Volume Engine"
   :author "Andrey Fainer <fandrey@gmx.com>"
   :licence "MIT"
   :serial t
-  :depends-on (:alexandria :cl-fad :sb-cga :sdl2)
+  :depends-on (:alexandria :cl-fad :sb-cga :sdl2 :cl-opengl)
   :components ((:file "package")
                (:file "utils")
                (:file "thread")
