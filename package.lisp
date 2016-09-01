@@ -40,6 +40,8 @@
                 #:defcenum
                 #:defcfun
                 #:defctype
+                #:defcvar
+                #:defcallback
                 #:null-pointer
                 #:null-pointer-p
                 #:inc-pointer

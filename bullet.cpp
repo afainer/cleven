@@ -47,6 +47,8 @@ const int voxmap_tile_size = 64;
 const int voxmap_tile_bytes =
   sizeof( voxel ) * voxmap_tile_size * voxmap_tile_size * voxmap_tile_size;
 
+void * (*detect_collision)();
+
 ATTRIBUTE_ALIGNED16(class) VoxmapShape: public btBoxShape
 {
  public:

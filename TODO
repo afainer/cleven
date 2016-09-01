@@ -10,6 +10,7 @@
   (wob :mv *suzanne* (vec 64 64 30))      ;Top of *suzanne* is not rendered
   (setq *camera-location* (vec 0 0 10))   ;Moving camera fixes this
 
+* TODO Rendering optimization
 * TODO Volumetric collision detection
 * TODO Multibody physics objects with constraints
 * TODO Use locations as fixnum arrays

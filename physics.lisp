@@ -30,18 +30,26 @@
 
 (use-foreign-library libphysics)
 
+(defcallback detect-collision :pointer ()
+  (null-pointer))
+
+(defcvar (*detect-collision-ptr* "detect_collision") :pointer
+  "Foreign pointer to the `detect-collision' callback.")
+
 (defun init-physics ()
   "Create discrete dynamics world."
   (if *physics*
       (free-physics))
   (aif* (foreign-funcall "init_physics" :pointer)
         (not (null-pointer-p it))
-        (setq *physics* it)))
+        (setf *physics* it
+              *detect-collision-ptr* (cffi:callback detect-collision))))
 
 (defun free-physics ()
   "Delete discrete dynamics world."
   (foreign-funcall "free_physics" :pointer *physics*)
-  (setq *physics* nil))
+  (setf *physics* nil
+        *detect-collision-ptr* (null-pointer)))
 
 (defun physics-gravity ()
   "Get physics gravity"
@@ -132,7 +140,7 @@ Return two values: rotation and translation."
                                            rotation
                                            translation
                                            mass
-                                           (voxmap-tiles (wob :voxmap sprite))))
+                                           (wob :voxels sprite)))
                           (add-body-to-physics bodyptr))))
         (rmbodyfn '#'(lambda ()
                        (when bodyptr
