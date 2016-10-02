@@ -60,6 +60,14 @@
                    (matrix* (rotated* 0f0 0f0 (- *camera-azimuth*))
                             (rotated* *camera-tilt* 0f0 0f0))))
 
+(defun camera-sees ()
+  "Which sprites the camera sees"
+  (do-wobs o
+    (aif (wob :bbox o)
+         ;; TODO Project the bbox to the near plan and check that it
+         ;; intersect with the near plan
+         )))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun do-camera-ordering ()
     "Generate ordering for `do-camera-box'."

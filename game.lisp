@@ -161,70 +161,13 @@ particular operation of an world object use the function `wob'."
 ;;; FIXME Use *world-lock*
 (defvar *world* nil
   "The game world.
-The world is 3D array of world tiles.  The game world space is 3D grid
-with cell size of +voxmap-tile-size+.  The cell is the world tile
-which contains a list of wobs.")
+For simplicity, world is just a plain list.")
 
-(defmacro with-world-tile ((tilevar loc &optional (lock-tile t)) &body body)
-  "Evaluate forms of BODY with TILEVAR bound to the tile at LOC."
-  (with-gensyms (gtileloc gmax)
-    `(let ((,gtileloc (trunc-vec ,loc +voxmap-tile-size+))
-           (,gmax (vec- (apply #'vec
-                               (nreverse (array-dimensions *world*)))
-                        (vecn 1))))
-       (when (inboxp ,gtileloc (vec) ,gmax)
-         (let ((,tilevar (apply #'aref
-                                *world*
-                                ;; TODO Convert GTILELOC to a fixnum array
-                                (mapcar #'truncate
-                                        (nreverse (vecxyz ,gtileloc))))))
-           ,@(if lock-tile
-                 `((bt:with-lock-held ((car ,tilevar)) ,@body))
-                 body))))))
+(defun add-to-world (wob)
+  "Add WOB to world."
+  (pushnew wob *world*))
 
-(defun world-tile (loc)
-  "Get wobs in the tile at LOC.
-LOC is specified in voxels, e.g. locations range from (0 0 0) to (s-1
-s-1 s-1) specify the first tile, where s = +voxmap-tile-size+.
-Locations range from (s 0 0) to (s*2-1 s-1 s-1) specify the second
-tile."
-  (with-world-tile (tile loc)
-    (copy-list (cdr tile))))
-
-;;; `add-to-world' and `remove-from-world' can be generalized into one
-;;; function, e.g. (get-wob wob loc1 loc2...), (setf (get-wob...
-
-(defun add-to-world (wob loc)
-  "Add WOB to world at LOC.
-LOC is specified in voxels."
-  (with-world-tile (tile loc)
-    (pushnew wob (cdr tile))))
-
-(defun remove-from-world (wob loc)
-  "Remove WOB from world at LOC.
-LOC is specified in voxels."
-  (with-world-tile (tile loc)
-    (setf (cdr tile) (delete wob (cdr tile)))))
-
-(defun make-world (sizex sizey sizez)
-  "Make the world array with size (SIZEX SIZEY SIZEZ).
-Size is specified in voxels.  The actual world size will be multiple
-of +voxmap-tile-size+."
-  (let* ((dim (mapcar #'(lambda (s)
-                          (ceiling (/ s +voxmap-tile-size+)))
-                      (list sizez sizey sizex)))
-         (ar (make-array dim)))
-    (dobox (loc (vec) (apply #'vec (mapcar #'1- (nreverse dim))))
-      ;; TODO Convert LOC to a fixnum array
-      (setf (aref ar
-                  (truncate (vecz loc))
-                  (truncate (vecy loc))
-                  (truncate (vecx loc)))
-            (list (bt:make-lock))))
-    ar))
-
-(defun make-global-world (sizex sizey sizez)
-  "Make the new world and assign it to `*world*'.
-See `make-world'."
-  ;; FIXME Use *world-lock*
-  (setq *world* (make-world sizex sizey sizez)))
+(defun remove-from-world (wob)
+  "Remove WOB from world."
+  (with-world-tile (tile )
+    (delete wob *world*)))
