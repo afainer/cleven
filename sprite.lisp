@@ -48,7 +48,6 @@
                               rotmat
                               (translate (vec* origin -1f0))))))
 
-(declaim (optimize (debug 3)))
 (defun sprite-bbox (data size)
   "Sprite bounding box with transformations."
   (letvec ((( x  y  z) (apply #'vec size)))

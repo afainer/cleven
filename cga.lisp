@@ -110,6 +110,11 @@
            (declare (ignorable ,@(mappend #'car bindings)))
            ,@body)))))
 
+(defmacro with-vecs ((&rest vecs) &body body)
+  "TODO Doc"
+  `(letvec ,(mapcar #'(lambda (v) `(,v ,v)) vecs)
+     ,@body))
+
 (defmacro dobox ((varloc vec1 vec2 &optional (step 1) (order '(x y z)))
                  &body body)
   "Iterate over the box [VEC1, VEC2] and evaluate forms of BODY.
