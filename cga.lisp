@@ -78,12 +78,20 @@
        (truncate (vecz v) divisor)))
 
 (defmacro letvec ((&rest bindings) &body body)
-  "TODO Doc
-  Bindings
-  ((a (vec 1 2 3))
-   ((x y z) (vec 4 5 6))
-   b
-   (c))"
+  "Bind elements of BINDINGS and evaluate the forms of BODY.
+BINDINGS is the following list:
+
+\({pref | (pref [value]) | ((x y z) value)}*)
+
+Bind prefX, prefY, prefZ to the elements of the result vector VALUE.
+In case of form ((x y z) value) bind X Y Z to the elements of VALUE.
+
+Examples:
+  (letvec ((a (vec 1 2 3))
+           ((x y z) (vec 4 5 6))
+           b
+           (c))
+     (list ax by cz x y z)"
   (flet ((elts-names (vec-name)
            (list (symbolicate vec-name 'x)
                  (symbolicate vec-name 'y)
@@ -111,7 +119,10 @@
            ,@body)))))
 
 (defmacro with-vecs ((&rest vecs) &body body)
-  "TODO Doc"
+  "Bind elements of VECS and evaluate the forms of BODY.
+VECS is a list of symbols: (VEC1 VEC2...).  Each symbol should be
+bound to a vector.  Bind VEC1X, VEC1Y, VEC1Z, VEC2X, VEC2Y,
+VEC2Z... to elements of VEC1, VEC2 and so on. "
   `(letvec ,(mapcar #'(lambda (v) `(,v ,v)) vecs)
      ,@body))
 
