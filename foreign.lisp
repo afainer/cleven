@@ -172,8 +172,8 @@ where bindings is a list similar to bindings for `let' special form.
 For example:
 
   (with-foreign-vecs (vec)
-    (cfuncall \"get_gravity\" :pointers (*physics* loc))
-    loc)
+    (cfuncall \"get_gravity\" :pointers (*physics* vec))
+    vec)
 
 This macro call creates a new vector VEC which is used as a pointer
 to the foreign function `get_gravity'.
