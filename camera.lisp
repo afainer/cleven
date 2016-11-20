@@ -30,6 +30,12 @@
 (defvar *camera-location* (vec)
   "The location of the camera.")
 
+(defvar *camera-near-plane* 1
+  "Camera near plane in voxels")
+
+(defvar *camera-far-plane* 256
+  "Camera far plane in voxels")
+
 (defun camera-matrix ()
   "The transformation matrix of the camera."
   (matrix* (rotated* (- *camera-tilt*) 0f0 0f0)
@@ -37,7 +43,7 @@
            (translate (vec* *camera-location* -1f0))))
 
 ;;; FIXME Zoom
-(defun camera-frustum-size ()
+(defun camera-screen-size ()
   (/ (apply #'min
             (multiple-value-list
              (sdl2:get-window-size *render-window*)))
@@ -45,7 +51,7 @@
 
 (defun make-ortho ()
   "Make the ortho projection matrix."
-  (let ((s (float (/ 2 (camera-frustum-size)) 0f0)))
+  (let ((s (float (/ 2 (camera-screen-size)) 0f0)))
     (matrix s   0f0 0f0 0f0
             0f0 s   0f0 0f0
             0f0 0f0 s   0f0
@@ -62,6 +68,7 @@
 
 (defun camera-sees ()
   "Which sprites the camera sees"
+  ;; TODO Use near and far planes
   (labels ((line (x x1 x2 y1 y2)
              (and (or (and (< x1 x) (> x2 x))
                       (and (< x2 x) (> x1 x)))
@@ -89,8 +96,9 @@
              (let ((c 0))
                (mapc #'(lambda (v1 v2)
                          (with-vecs (v1 v2)
-                           (let ((l (line 0f0 v1y v2y v1x v2x)))
-                             (if (and l (> l 0f0)) (incf c)))))
+                           (aif* (line 0f0 v1y v2y v1x v2x)
+                                 (and it (> it 0f0))
+                                 (incf c))))
                      (list (nth 0 face) (nth 1 face) (nth 2 face) (nth 3 face))
                      (list (nth 1 face) (nth 2 face) (nth 3 face) (nth 0 face)))
                (= c 1))))
@@ -144,7 +152,7 @@ VARLOC is the current tile location."
   ;; At the moment approximate viewable area with cube which size is
   ;; equal to diagonal of camera frustum.
   (with-gensyms (gloc size)
-    `(let* ((,size (/ (camera-frustum-size) 2))
+    `(let* ((,size (/ (camera-screen-size) 2))
             (orders
              (list
               ,@(let ((ord))

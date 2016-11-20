@@ -23,19 +23,13 @@
 
 #version 330
 
-const int maxtexnum = #.(max-tex-attribs);
+in vec2 position;
 
-in  vec3 position;
-in  vec3 texcoordsv[ maxtexnum ];
-out vec3 texcoords[ maxtexnum ];
-
-uniform mat4 camera;
-uniform int  texnum;
+uniform float camera_far_plane;
+out vec3 texcoord;
 
 void main()
 {
-  gl_Position = camera * vec4( position.x, position.y, position.z, 1 );
-
-  for( int i = 0; i < texnum; ++i )
-    texcoords[ i ] = texcoordsv[ i ];
+  texcoord = vec3( position / 2.0f + 0.5f, camera_far_plane - gl_InstanceID );
+  gl_Position = vec4( position, 0.0f, 1.0f );
 }
