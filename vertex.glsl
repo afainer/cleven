@@ -23,13 +23,17 @@
 
 #version 330
 
+const float tex_tile_size = #.(float (tex-tile-size) 0f0)f;
+const float voxsize  = 1.f / #.(max-tex-size).f;
+
 in vec2 position;
 
-uniform float camera_far_plane;
+uniform float camera_far_plane, tex_screen_size;
 out vec3 texcoord;
 
 void main()
 {
-  texcoord = vec3( position / 2.0f + 0.5f, camera_far_plane - gl_InstanceID );
+  texcoord = vec3( position * tex_screen_size + tex_tile_size / 2.0f,
+                   (camera_far_plane - gl_InstanceID) * voxsize );
   gl_Position = vec4( position, 0.0f, 1.0f );
 }

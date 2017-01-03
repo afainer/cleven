@@ -143,14 +143,14 @@ Is not used at the moment.")
   ;; vertexes is sufficient.
   (let ((slice-floats 8))
     (with-foreign-object (ar :float slice-floats)
-      (setf (mem-aref ar :float 0) -1f0
-            (mem-aref ar :float 1) -1f0
-            (mem-aref ar :float 2) -1f0
-            (mem-aref ar :float 3)  1f0
-            (mem-aref ar :float 4)  1f0
-            (mem-aref ar :float 5) -1f0
-            (mem-aref ar :float 6)  1f0
-            (mem-aref ar :float 7)  1f0)
+      (setf (mem-aref ar :float 0) -.5f0
+            (mem-aref ar :float 1) -.5f0
+            (mem-aref ar :float 2) -.5f0
+            (mem-aref ar :float 3)  .5f0
+            (mem-aref ar :float 4)  .5f0
+            (mem-aref ar :float 5) -.5f0
+            (mem-aref ar :float 6)  .5f0
+            (mem-aref ar :float 7)  .5f0)
       (gl:buffer-data :array-buffer
                       :static-draw
                       (gl::make-gl-array-from-pointer ar :float slice-floats))
@@ -159,14 +159,23 @@ Is not used at the moment.")
 
 (defun voxels-to-texture ()
   "Copy voxels of WOBS into the texture."
+  ;; The rendering is not working yet.  Just load two tiles of the
+  ;; first sprite
   (make-texture)
-  (letvec (((x y z) (tile-locat 0)))
+  (letvec (((x1 y1 z1) (tile-locat 0))
+           ((x2 y2 z2) (tile-locat 1)))
     (gl:tex-sub-image-3d
      :texture-3d 0
-     x y z
+     x1 y1 z1
      +voxmap-tile-size+ +voxmap-tile-size+ +voxmap-tile-size+
      :rgba :unsigned-byte
-     (aref (voxmap-tiles (wob :voxmap (car *world*))) 0 0 0))))
+     (aref (voxmap-tiles (wob :voxmap (car *world*))) 0 0 0))
+    (gl:tex-sub-image-3d
+     :texture-3d 0
+     x2 y2 z2
+     +voxmap-tile-size+ +voxmap-tile-size+ +voxmap-tile-size+
+     :rgba :unsigned-byte
+     (aref (voxmap-tiles (wob :voxmap (car *world*))) 0 1 0))))
 
 (let ((buffer 0)
       (vertex-array 0)
@@ -211,10 +220,12 @@ Is not used at the moment.")
   (sdl2:gl-swap-window *render-window*))
 
 (let ((program)
-      (camera-far-index -1))
+      (camera-far-index -1)
+      (tex-screen-index -1))
   (defun load-uniforms ()
     "Load uniform variables."
-    (gl:uniformf camera-far-index *camera-far-plane*))
+    (gl:uniformf camera-far-index *camera-far-plane*)
+    (gl:uniformf tex-screen-index (/ (camera-screen-size) (max-tex-size) 2)))
 
   (defun render-load-shaders (&optional
                                 (vertex *default-vertex-shader*)
@@ -227,7 +238,8 @@ Is not used at the moment.")
                          (preprocess-shader
                           (read-file-into-string fragment))
                          (cons +vertex-attrib-location+ "position")))
-          camera-far-index (gl:get-uniform-location program "camera_far_plane"))
+          camera-far-index (gl:get-uniform-location program "camera_far_plane")
+          tex-screen-index (gl:get-uniform-location program "tex_screen_size"))
     (let ((sampler (gl:get-uniform-location program "sampler")))
       (when (< sampler 0)
         (error "The sampler uniform is not found"))
@@ -237,7 +249,8 @@ Is not used at the moment.")
     "Free shader program."
     (free-shaders program)
     (setq program nil
-          camera-far-index -1)))
+          camera-far-index -1
+          tex-screen-index -1)))
 
 (defun define-reload-shaders ()
   "Define the render thread function `reload-shaders'."
@@ -250,7 +263,7 @@ Is not used at the moment.")
 
 ;;; Put `render-frame' in `*render-loop-hook*' so we have ability to
 ;;; do something before or after the frame rendering.
-;; (lock #'add-hook *render-loop-hook-lock* 'render-frame)
+(lock #'add-hook *render-loop-hook-lock* 'render-frame)
 (lock #'add-hook *render-init-hook-lock* 'bind-gl-objects)
 (lock #'add-hook *render-init-hook-lock* 'render-load-shaders)
 (lock #'add-hook *render-init-hook-lock* 'define-reload-shaders)

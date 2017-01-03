@@ -32,7 +32,13 @@ uniform sampler3D sampler;
 
 void main()
 {
-  color = texture( sampler,
-                   vec3(texcoord.xy * tex_tile_size,
-                        tex_tile_size - texcoord.z * voxsize) );
+  if( texcoord.x < 0 ||
+      texcoord.y < 0 ||
+      texcoord.z < 0 ||
+      texcoord.x > tex_tile_size ||
+      texcoord.y > tex_tile_size ||
+      texcoord.z > tex_tile_size )
+    discard;
+
+  color = texture( sampler, vec3(texcoord.xy, tex_tile_size - texcoord.z) );
 }
