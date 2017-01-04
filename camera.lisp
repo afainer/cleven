@@ -25,7 +25,7 @@
 
 (defvar *camera-tilt* 45)
 
-(defvar *camera-azimuth* 45)
+(defvar *camera-azimuth* -45)
 
 (defvar *camera-location* (vec)
   "The location of the camera.")
@@ -39,8 +39,14 @@
 (defun camera-matrix ()
   "The transformation matrix of the camera."
   (matrix* (rotated* (- *camera-tilt*) 0f0 0f0)
-           (rotated* 0f0 0f0 *camera-azimuth*)
+           (rotated* 0f0 0f0 (- *camera-azimuth*))
            (translate (vec* *camera-location* -1f0))))
+
+(defun camera-world-matrix ()
+  "The world transformation matrix of the camera."
+  (matrix* (translate *camera-location*)
+           (rotated* 0f0 0f0 *camera-azimuth*)
+           (rotated* *camera-tilt* 0f0 0f0)))
 
 ;;; FIXME Zoom
 (defun camera-screen-size ()
