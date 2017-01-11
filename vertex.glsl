@@ -29,11 +29,15 @@ const float voxsize  = 1.f / #.(max-tex-size).f;
 in vec2 position;
 
 uniform float camera_far_plane, tex_screen_size;
+uniform mat4 camera_world_matrix;
 out vec3 texcoord;
 
 void main()
 {
-  texcoord = vec3( position * tex_screen_size + tex_tile_size / 2.0f,
-                   (camera_far_plane - gl_InstanceID) * voxsize );
+  texcoord =
+    (vec4( position * tex_screen_size,
+           (camera_far_plane - gl_InstanceID) * voxsize, 1.0f ) *
+     camera_world_matrix).xyz + tex_tile_size / 2.0f;
+
   gl_Position = vec4( position, 0.0f, 1.0f );
 }

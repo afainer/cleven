@@ -221,11 +221,13 @@ Is not used at the moment.")
 
 (let ((program)
       (camera-far-index -1)
+      (camera-world-index -1)
       (tex-screen-index -1))
   (defun load-uniforms ()
     "Load uniform variables."
     (gl:uniformf camera-far-index *camera-far-plane*)
-    (gl:uniformf tex-screen-index (/ (camera-screen-size) (max-tex-size) 2)))
+    (gl:uniformf tex-screen-index (/ (camera-screen-size) (max-tex-size) 2))
+    (gl:uniform-matrix-4fv camera-world-index (camera-world-matrix) t))
 
   (defun render-load-shaders (&optional
                                 (vertex *default-vertex-shader*)
@@ -239,6 +241,7 @@ Is not used at the moment.")
                           (read-file-into-string fragment))
                          (cons +vertex-attrib-location+ "position")))
           camera-far-index (gl:get-uniform-location program "camera_far_plane")
+          camera-world-index (gl:get-uniform-location program "camera_world_matrix")
           tex-screen-index (gl:get-uniform-location program "tex_screen_size"))
     (let ((sampler (gl:get-uniform-location program "sampler")))
       (when (< sampler 0)
@@ -250,6 +253,7 @@ Is not used at the moment.")
     (free-shaders program)
     (setq program nil
           camera-far-index -1
+          camera-world-index -1
           tex-screen-index -1)))
 
 (defun define-reload-shaders ()
